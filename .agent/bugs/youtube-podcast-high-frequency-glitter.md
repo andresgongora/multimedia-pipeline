@@ -122,6 +122,17 @@ No mid-pipeline AAC generation remains.
 - `stages/filter_podcast_audio.py`
 - `test/stages/filter_podcast_audio.py`
 
+## Regression: blank WAV config
+
+`pipelines/scrub_youtube_podcast.yaml` intentionally leaves `convert_to_wav:`
+blank while retaining commented tuning examples. YAML parses that value as
+`None`, not `{}`. Pipeline previously unpacked it as a mapping and failed before
+WAV conversion with `'NoneType' object is not a mapping`.
+
+Fix: normalize this optional stage configuration with `or {}` before unpacking.
+`test/pipelines/scrub_youtube_podcast_config.py` mocks stage boundaries and
+asserts default blank configuration completes through finalization.
+
 ## If artifact still remains
 
 Next safe experiment:

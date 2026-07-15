@@ -161,7 +161,7 @@ def run(
                 str(src),
                 str(temp_wav),
                 options={
-                    **stage_cfg.get("convert_to_wav", {}),
+                    **(stage_cfg.get("convert_to_wav") or {}),
                     "verbose": verbose,
                 },
             )
