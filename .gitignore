@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+.venv/
+venv/
+*.whl
+
+# uv
+.python-version
+
+# Temp files (pipeline intermediates)
+.~*
+
+# Test media files
+test/sample/
+test/output/
+
+# Tool runtime artifacts
+**/tools/**/outputs/
+**/tools/**/samples/
+**/tools/**/checkpoints/
+# Downloaded by the audio-filter Docker build; never commit the 36 MB binary.
+stages/clean_recorded_voice/tools/audio-filter/tools/deep-filter-*
+
+# Old projects (will be removed)
+old/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+
+# ruff
+.ruff_cache/

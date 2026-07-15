@@ -1,0 +1,32 @@
+[project]
+name = "multimedia-pipeline"
+version = "0.1.0"
+description = "Hierarchical stage-based multimedia processing pipeline"
+requires-python = ">=3.11"
+dependencies = [
+    "auto-editor>=29.3.1",
+    "httpx>=0.28.1",
+    "pyyaml>=6.0.3",
+    "rich>=13.0",
+    "typer>=0.25.1",
+    "yt-dlp>=2026.3.17",
+]
+
+[project.scripts]
+multimedia-pipeline = "multimedia_pipeline.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.11.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

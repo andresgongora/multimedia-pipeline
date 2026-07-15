@@ -1,0 +1,21 @@
+# Pipeline config: extract_and_clean_voice
+# Processes all video files in a directory, producing cleaned WAV files
+# alongside each original video.
+
+verbose: true
+
+# File extensions treated as video inputs (case-insensitive)
+video_extensions:
+  - .mp4
+  - .mov
+  - .mkv
+  - .avi
+  - .mts
+  - .m2ts
+  - .webm
+
+# Passed through to the extract_and_clean_voice stage
+stages:
+  extract:
+    codec: lossless
+  clean: {}

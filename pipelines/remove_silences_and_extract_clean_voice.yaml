@@ -1,0 +1,30 @@
+# Pipeline config: remove_silences_and_extract_clean_voice
+# Produces a silence-trimmed video and a cleaned WAV alongside each original video.
+
+verbose: true
+
+# File extensions treated as video inputs (case-insensitive)
+video_extensions:
+  - .mp4
+  - .mov
+  - .mkv
+  - .avi
+  - .mts
+  - .m2ts
+  - .webm
+
+output:
+  video_suffix: .silences_removed
+  audio_suffix: .cleaned_voice
+
+stages:
+  sanitize:
+    warn_variable_framerate: true
+    fix_framerate: false
+    target_fps: null
+    rotate: 0
+  remove:
+    normalize: true        # pre-normalize audio so silence detection works on quiet input
+  extract:
+    codec: lossless
+  clean: {}

@@ -1,0 +1,14 @@
+[project]
+name = "channel-tools"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "clearvoice",
+    "nara_wpe",
+    "scipy>=1.15.3",
+    "soundfile",
+    "tqdm",
+]
+
+[tool.setuptools]
+packages = []

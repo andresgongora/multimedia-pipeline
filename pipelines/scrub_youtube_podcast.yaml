@@ -1,0 +1,46 @@
+verbose: true
+
+stages:
+  identify:
+    search_fallback: true
+    duration_tolerance: 5.0
+
+  sponsorblock:
+    categories:
+      - sponsor
+      - selfpromo
+      - interaction
+      - intro
+      - outro
+      - filler
+    use_privacy_api: false
+    ssl_verify: false   # set true if your network doesn't intercept TLS
+
+  convert_to_wav:
+    # preserve source sample rate / channels by default
+    # sample_rate: 48000
+    # channels: 2
+
+  cut:
+    # mode is forced to "precise" by the pipeline; setting it here has no effect
+    mode: precise
+
+  remove_silences:
+    enabled: true
+    # Gentle settings: only cut long dead air, keep natural pauses.
+    # threshold 0.02 ≈ -34 dB (quieter than default, less aggressive)
+    # margin 0.5sec keeps a comfortable buffer around each cut
+    threshold: 0.02
+    margin: "0.5sec"
+
+  filter:
+    highpass_hz: 90
+    lowpass_hz: 14500
+    loudnorm_lufs: -16
+    loudnorm_lra: 7
+    loudnorm_tp: -2
+    bitrate: "256k"
+    output_format: m4a
+
+  suggest_name:
+    format: "{artist} - {title}"

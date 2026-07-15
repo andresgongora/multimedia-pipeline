@@ -1,0 +1,22 @@
+verbose: true
+
+stages:
+  identify:
+    search_fallback: true
+    duration_tolerance: 5.0
+
+  sponsorblock:
+    categories:
+      - sponsor
+      - selfpromo
+      - interaction
+      - intro
+      - outro
+      - filler
+    use_privacy_api: false
+
+  cut:
+    mode: fast
+
+  suggest_name:
+    format: "{artist} - {title}"
