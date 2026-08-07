@@ -49,3 +49,6 @@ Thumbs.db
 
 # ruff
 .ruff_cache/
+
+# Local agent notes
+.agent/
