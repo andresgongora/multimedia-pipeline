@@ -108,4 +108,25 @@ try:
 except ValueError:
     print("Manual lossy format without bitrate: PASS")
 
+
+MISSING_INPUT_OUT = ROOT / "test/output/filter_podcast_audio_missing.opus"
+try:
+    run("/nonexistent/audio.opus", str(MISSING_INPUT_OUT), options={"verbose": False})
+    raise AssertionError("Expected FileNotFoundError for missing input")
+except FileNotFoundError:
+    print("Missing input raises FileNotFoundError: PASS")
+
+
+OVERWRITE_OUT = ROOT / "test/output/filter_podcast_audio_overwrite.opus"
+OVERWRITE_OUT.parent.mkdir(parents=True, exist_ok=True)
+OVERWRITE_OUT.touch()
+try:
+    run(str(SAMPLE), str(OVERWRITE_OUT), options={"verbose": False})
+    raise AssertionError("Expected FileExistsError for existing output")
+except FileExistsError:
+    print("Overwrite protection: PASS")
+finally:
+    OVERWRITE_OUT.unlink(missing_ok=True)
+
+
 print("PASS")

@@ -30,6 +30,22 @@ for stale in OUTPUT_DIR.glob("*.m4a"):
 
 from pipelines.scrub_youtube_podcast import run  # noqa: E402
 
+try:
+    run("/definitely/nonexistent/path.opus", options={"verbose": False})
+    raise AssertionError("Expected FileNotFoundError for missing input")
+except FileNotFoundError:
+    print("Missing input raises FileNotFoundError: PASS")
+
+try:
+    video_sample = ROOT / "test/sample/Wearing the Wrong Hat in the 1920\u2019s Tales From the Bottle.mp4"
+    if video_sample.exists():
+        run(str(video_sample), options={"verbose": False})
+        raise AssertionError("Expected ValueError for video input")
+    else:
+        print("SKIP video rejection test - no video sample")
+except ValueError:
+    print("Video input rejected with ValueError: PASS")
+
 result = run(str(SAMPLE), output_dir=str(OUTPUT_DIR), force=True)
 
 print("\nResult:")

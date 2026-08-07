@@ -123,6 +123,19 @@ def test_missing_input():
         check("raises FileNotFoundError", True)
 
 
+def test_invalid_codec(sample: Path):
+    """Must raise ValueError for unknown codec."""
+    print("\n--- test_invalid_codec ---")
+    out = out_path(sample, "test_bad_codec.m4a")
+    cleanup(out)
+
+    try:
+        run(str(sample), str(out), options={"codec": "nonexistent_codec"})
+        check("raises ValueError", False, "no exception")
+    except ValueError:
+        check("raises ValueError", True)
+
+
 def test_lossless_for_comparison(sample: Path):
     """Lossless WAV kept in test/output/ for manual A/B comparison."""
     print("\n--- test_lossless_for_comparison ---")
@@ -151,6 +164,7 @@ if __name__ == "__main__":
     test_explicit_codec(sample)
     test_overwrite_protection(sample)
     test_missing_input()
+    test_invalid_codec(sample)
     test_lossless_for_comparison(sample)
 
     print(f"\n{'=' * 40}")

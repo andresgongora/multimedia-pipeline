@@ -160,6 +160,15 @@ def test_strip_chapters_option() -> None:
     cleanup(out)
 
 
+def test_missing_input() -> None:
+    print("\n--- test_missing_input ---")
+    try:
+        run("/nonexistent/file.m4a", str(OUTDIR / "scrub_missing.m4a"), options={"verbose": False})
+        check("raises FileNotFoundError", False, "no exception raised")
+    except FileNotFoundError:
+        check("raises FileNotFoundError", True)
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -169,6 +178,7 @@ if __name__ == "__main__":
     test_audio_still_plays()
     test_overwrite_protection()
     test_strip_chapters_option()
+    test_missing_input()
 
     print(f"\n{'=' * 40}")
     print(f"  {passed} passed, {failed} failed")

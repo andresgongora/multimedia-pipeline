@@ -52,9 +52,22 @@ def test_config_merge_fallback() -> None:
         check("keeps default extract codec", merged["stages"]["extract"].get("codec") == "lossless")
 
 
+def test_non_video_rejected() -> None:
+    print("\n--- test_non_video_rejected ---")
+    with tempfile.TemporaryDirectory() as tmp:
+        audio = Path(tmp) / "audio.m4a"
+        audio.touch()
+        try:
+            run(str(audio))
+            check("raises ValueError for audio input", False, "no exception")
+        except ValueError:
+            check("raises ValueError for audio input", True)
+
+
 if __name__ == "__main__":
     test_missing_input_path()
     test_config_merge_fallback()
+    test_non_video_rejected()
 
     print(f"\n{'=' * 40}")
     print(f"Results: {passed} passed, {failed} failed")

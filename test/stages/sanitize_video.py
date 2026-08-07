@@ -152,6 +152,42 @@ def test_vfr_detector_helper() -> None:
     )
 
 
+def test_invalid_rotation() -> None:
+    print("\n--- test_invalid_rotation ---")
+    with tempfile.TemporaryDirectory() as tmp:
+        src = Path(tmp) / "src.mp4"
+        dst = Path(tmp) / "out.mp4"
+        _make_sample_video(src)
+
+        try:
+            sanitize_video(str(src), str(dst), options={"rotate": 45, "verbose": False})
+            check("raises ValueError for invalid rotation", False, "no exception")
+        except ValueError:
+            check("raises ValueError for invalid rotation", True)
+
+
+def test_no_video_stream() -> None:
+    print("\n--- test_no_video_stream ---")
+    with tempfile.TemporaryDirectory() as tmp:
+        audio = Path(tmp) / "audio.wav"
+        dst = Path(tmp) / "out.mp4"
+        cmd = [
+            "ffmpeg", "-y",
+            "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
+            str(audio),
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            check("create test audio", False, result.stderr[:200])
+            return
+
+        try:
+            sanitize_video(str(audio), str(dst), options={"verbose": False})
+            check("raises ValueError for audio-only input", False, "no exception")
+        except ValueError:
+            check("raises ValueError for audio-only input", True)
+
+
 if __name__ == "__main__":
     test_missing_input()
     test_passthrough_copy()
@@ -159,6 +195,8 @@ if __name__ == "__main__":
     test_fix_framerate_requires_target()
     test_fix_framerate_sets_target()
     test_vfr_detector_helper()
+    test_invalid_rotation()
+    test_no_video_stream()
 
     print(f"\n{'=' * 40}")
     print(f"Results: {passed} passed, {failed} failed")

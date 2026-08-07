@@ -123,6 +123,21 @@ def test_missing_input():
         check("raises FileNotFoundError", True)
 
 
+def test_overwrite_protection(sample: Path):
+    print("\n--- test_overwrite_protection ---")
+    out = out_path(sample, "convert_to_wav_exists.wav")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.touch()
+
+    try:
+        run(str(sample), str(out), options={"verbose": False})
+        check("raises FileExistsError", False, "no exception")
+    except FileExistsError:
+        check("raises FileExistsError", True)
+
+    cleanup(out)
+
+
 if __name__ == "__main__":
     sample = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_SAMPLE
 
@@ -137,6 +152,7 @@ if __name__ == "__main__":
     test_overrides(sample)
     test_requires_wav_output(sample)
     test_missing_input()
+    test_overwrite_protection(sample)
 
     print(f"\n{'=' * 40}")
     print(f"Results: {passed} passed, {failed} failed")

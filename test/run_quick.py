@@ -14,6 +14,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 TESTS = [
     ROOT / "test" / "cli" / "help.py",
+    ROOT / "test" / "shared" / "config.py",
+    ROOT / "test" / "shared" / "output.py",
     ROOT / "test" / "pipelines" / "extract_and_clean_voice.py",
     ROOT / "test" / "pipelines" / "remove_silences_and_extract_clean_voice.py",
     ROOT / "test" / "pipelines" / "scrub_youtube_podcast_config.py",
