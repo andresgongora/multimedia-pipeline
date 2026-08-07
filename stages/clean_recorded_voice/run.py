@@ -95,10 +95,11 @@ def _run_audio_filter(src: Path, dst: Path, opts: dict) -> None:
 
     log.debug("Command: %s (cwd=%s)", " ".join(cmd), work_dir)
 
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=work_dir)
-
-    if temp_input and temp_input.exists():
-        temp_input.unlink()
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=work_dir)
+    finally:
+        if temp_input and temp_input.exists():
+            temp_input.unlink()
 
     if result.returncode != 0:
         raise RuntimeError(

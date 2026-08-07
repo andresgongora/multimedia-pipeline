@@ -109,11 +109,16 @@ def _restore_rotation(video: Path, stderr_output: str) -> None:
         "copy",
         str(tmp),
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode == 0 and tmp.exists():
-        tmp.replace(video)
-        stage_log(_STAGE, f"[dim]restored rotation: {rotation}°[/]")
-        return
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0 and tmp.exists():
+            tmp.replace(video)
+            stage_log(_STAGE, f"[dim]restored rotation: {rotation}°[/]")
+            return
+    except Exception:
+        if tmp.exists():
+            tmp.unlink()
+        raise
 
     # Fallback: -metadata:s:v rotate (older ffmpeg, H.264/MOV)
     if tmp.exists():
@@ -129,11 +134,16 @@ def _restore_rotation(video: Path, stderr_output: str) -> None:
         f"rotate={rotation}",
         str(tmp),
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode == 0 and tmp.exists():
-        tmp.replace(video)
-        stage_log(_STAGE, f"[dim]restored rotation (tag): {rotation}°[/]")
-        return
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0 and tmp.exists():
+            tmp.replace(video)
+            stage_log(_STAGE, f"[dim]restored rotation (tag): {rotation}°[/]")
+            return
+    except Exception:
+        if tmp.exists():
+            tmp.unlink()
+        raise
 
     if tmp.exists():
         tmp.unlink()

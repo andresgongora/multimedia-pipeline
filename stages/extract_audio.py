@@ -148,12 +148,11 @@ def run(input_path: str, output_path: str, *, options: dict | None = None) -> di
     with stage_timer(_STAGE) as ctx:
         result = subprocess.run(cmd, capture_output=True, text=True)
 
-    if result.returncode != 0:
-        raise RuntimeError(f"ffmpeg failed (exit {result.returncode}):\n{result.stderr.strip()}")
+        if result.returncode != 0:
+            raise RuntimeError(f"ffmpeg failed (exit {result.returncode}):\n{result.stderr.strip()}")
 
-    output_dur = _probe_duration(dst)
-
-    ctx["detail"] = f"{output_dur:.1f}s extracted" if output_dur else "extracted"
+        output_dur = _probe_duration(dst)
+        ctx["detail"] = f"{output_dur:.1f}s extracted" if output_dur else "extracted"
 
     return {
         "output_path": str(dst),

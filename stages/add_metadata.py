@@ -98,7 +98,10 @@ def run(input_path: str, output_path: str, *, options: dict | None = None) -> di
     cmd.append(str(dst))
 
     with stage_timer(_STAGE, "embed metadata"):
-        subprocess.run(cmd, capture_output=True, check=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        raise RuntimeError(f"ffmpeg failed (exit {result.returncode}):\n{result.stderr.strip()}")
 
     return {"output_path": str(dst)}
 
