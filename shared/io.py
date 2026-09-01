@@ -23,6 +23,7 @@ dir     file    **error**
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import NamedTuple
 
@@ -51,6 +52,27 @@ class IOPair(NamedTuple):
 
 class InputOverwriteError(ValueError):
     """Raised when a proposed output would overwrite the input file."""
+
+
+# ---------------------------------------------------------------------------
+# Filename sanitization
+# ---------------------------------------------------------------------------
+
+_INVALID_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+_WHITESPACE_RUN = re.compile(r"\s+")
+
+
+def sanitize_filename(name: str, *, max_length: int = 150) -> str:
+    """Return *name* stripped of characters illegal in filenames on common filesystems.
+
+    Replaces illegal characters with a space, collapses whitespace, trims
+    leading/trailing dots/spaces (invalid trailing on Windows), and caps
+    length to *max_length* characters. Does not touch the extension —
+    pass the stem only.
+    """
+    cleaned = _INVALID_FILENAME_CHARS.sub(" ", name)
+    cleaned = _WHITESPACE_RUN.sub(" ", cleaned).strip(" .")
+    return cleaned[:max_length].strip(" .") or "untitled"
 
 
 # ---------------------------------------------------------------------------

@@ -33,7 +33,7 @@ INBOX="$SCRIPT_DIR/Inbox"
 OUTDIR="$SCRIPT_DIR/$(date +%Y.%m.%d)"
 
 # Supported audio extensions (case-insensitive match via find's -iregex).
-AUDIO_EXTS="m4a|mp3|opus|flac|wav|ogg|aac"
+AUDIO_EXTS="m4a|mp3|opus|flac|wav|ogg|aac|mka"
 
 # Resolve the real location of this script (following the symlink) so we can
 # cd into the project root and run uv from there, regardless of where the

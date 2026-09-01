@@ -9,7 +9,7 @@ dependencies = [
     "pyyaml>=6.0.3",
     "rich>=13.0",
     "typer>=0.25.1",
-    "yt-dlp>=2026.3.17",
+    "yt-dlp>=2026.8.1",
 ]
 
 [project.scripts]

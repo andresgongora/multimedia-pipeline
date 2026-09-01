@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from click import Choice
 
 from shared.io import IOPair, resolve_io
 
@@ -27,7 +28,7 @@ app = typer.Typer(
 # ---------------------------------------------------------------------------
 
 _VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".avi", ".mts", ".m2ts", ".webm"}
-_AUDIO_EXTS = {".m4a", ".mp3", ".opus", ".flac", ".wav", ".ogg", ".aac"}
+_AUDIO_EXTS = {".m4a", ".mp3", ".opus", ".flac", ".wav", ".ogg", ".aac", ".mka"}
 _MEDIA_EXTS = _VIDEO_EXTS | _AUDIO_EXTS
 
 
@@ -112,16 +113,10 @@ def _run_pipeline(
 # extract-and-clean-voice
 # ---------------------------------------------------------------------------
 
-ecv = typer.Typer(
+@app.command(
     name="extract-and-clean-voice",
     help="Extract and clean voice from video file(s). Output is a WAV next to each source.",
-    no_args_is_help=True,
-    pretty_exceptions_enable=False,
 )
-app.add_typer(ecv)
-
-
-@ecv.callback(invoke_without_command=True)
 def extract_and_clean_voice(
     input: InputArg,
     output: OutputOpt = None,
@@ -150,16 +145,10 @@ def extract_and_clean_voice(
 # remove-silences-and-extract-clean-voice
 # ---------------------------------------------------------------------------
 
-rsecv = typer.Typer(
+@app.command(
     name="remove-silences-and-extract-clean-voice",
     help="Remove silences then write a trimmed video and cleaned WAV next to each source.",
-    no_args_is_help=True,
-    pretty_exceptions_enable=False,
 )
-app.add_typer(rsecv)
-
-
-@rsecv.callback(invoke_without_command=True)
 def remove_silences_and_extract_clean_voice(
     input: InputArg,
     output: OutputOpt = None,
@@ -188,19 +177,13 @@ def remove_silences_and_extract_clean_voice(
 # scrub-youtube-media
 # ---------------------------------------------------------------------------
 
-sym = typer.Typer(
+@app.command(
     name="scrub-youtube-media",
     help=(
         "Identify media on YouTube, remove sponsored segments via SponsorBlock, "
         "scrub privacy metadata, and suggest a clean filename."
     ),
-    no_args_is_help=True,
-    pretty_exceptions_enable=False,
 )
-app.add_typer(sym)
-
-
-@sym.callback(invoke_without_command=True)
 def scrub_youtube_media(
     input: InputArg,
     output: OutputOpt = None,
@@ -229,19 +212,13 @@ def scrub_youtube_media(
 # scrub-youtube-podcast
 # ---------------------------------------------------------------------------
 
-syp = typer.Typer(
+@app.command(
     name="scrub-youtube-podcast",
     help=(
         "Scrub a YouTube podcast audio file: remove sponsored segments, "
         "apply podcast intelligibility filter, and output as M4A."
     ),
-    no_args_is_help=True,
-    pretty_exceptions_enable=False,
 )
-app.add_typer(syp)
-
-
-@syp.callback(invoke_without_command=True)
 def scrub_youtube_podcast(
     input: InputArg,
     output: OutputOpt = None,
@@ -264,6 +241,60 @@ def scrub_youtube_podcast(
         quiet,
         options,
     )
+
+
+# ---------------------------------------------------------------------------
+# download-youtube-media
+# ---------------------------------------------------------------------------
+
+PlaylistArg = Annotated[str, typer.Argument(help="Public YouTube playlist URL.")]
+OutputDirArg = Annotated[Path, typer.Argument(help="Directory to download into.")]
+MediaTypeOpt = Annotated[
+    str, typer.Option("--type", help="Media type to download.", click_type=Choice(["video", "audio"]))
+]
+DbOpt = Annotated[Path, typer.Option("--db", help="Download-registry JSON path.")]
+
+
+@app.command(
+    name="download-youtube-media",
+    help=(
+        "Download every new video in a public YouTube playlist, deduplicated "
+        "against a download-registry DB. No further processing (chain other "
+        "pipelines on the output directory afterward)."
+    ),
+)
+def download_youtube_media_cmd(
+    playlist_url: PlaylistArg,
+    output_dir: OutputDirArg,
+    media_type: MediaTypeOpt,
+    db: DbOpt,
+    force: ForceOpt = False,
+    config: ConfigOpt = None,
+    quiet: QuietOpt = False,
+    options: OptionsOpt = None,
+) -> None:
+    import pipelines.download_youtube_media as pipeline
+
+    opts: dict = json.loads(options) if options else {}
+    if quiet:
+        opts["verbose"] = False
+
+    try:
+        result = pipeline.run(
+            playlist_url,
+            str(output_dir),
+            str(db),
+            media_type,
+            force=force,
+            config_path=config,
+            options=opts,
+        )
+    except Exception as exc:
+        typer.echo(f"download-youtube-media failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    if result["failed"]:
+        raise typer.Exit(1)
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,15 @@
+verbose: true
+
+# Registry entries older than this are treated as expired (re-download allowed).
+max_age_days: 60
+
+# Output container per media_type. Both accept arbitrary codecs via stream
+# copy (no forced re-encode) — see .agent/decisions/download-media-container-format.md
+video_ext: ".mkv"
+audio_ext: ".mka"
+
+stages:
+  download:
+    resolution: 1080
+    video_codec: av1
+    language: original
