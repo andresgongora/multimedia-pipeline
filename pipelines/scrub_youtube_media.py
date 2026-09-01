@@ -156,10 +156,8 @@ def run(
                 current = temp_meta
 
             # ── 5. Suggest name & finalize ────────────────────────────────────
-            # Pass the original source file so suggest_name reads its clean
-            # filename/metadata — not the temp file's mangled name.
             name_result = suggest_name.run(
-                str(src),
+                str(current),
                 options={
                     **stage_cfg.get("suggest_name", {}),
                     "verbose": False,

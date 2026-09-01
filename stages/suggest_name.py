@@ -9,7 +9,8 @@ Two strategies, tried in order:
      Requires at least one of: title, artist/album_artist.
 
   2. Scrub — strips technical noise from the existing filename (codec/quality
-     tokens, resolution badges, pipe characters, underscores, …).
+     tokens, resolution badges, pipe characters, underscores, temp-file
+     markers left by this repo's `.~stage~name` pipeline convention, …).
 
 If neither strategy produces a useful name, returns the original stem unchanged.
 
@@ -21,7 +22,10 @@ Format string placeholders (strategy 1):
   separators (e.g. " - ") are collapsed automatically.
 
 Inputs:
-    input_path — path to the media file
+    input_path — path to the media file. Safe to pass a pipeline's
+                 in-progress temp file directly (e.g. `.~add_metadata~My
+                 Podcast.wav`) — the scrub fallback strips the `.~stage~`
+                 prefix before cleaning the rest of the name.
 
 Options:
     format  — format string for metadata strategy (default: "{artist} - {title}")
@@ -38,6 +42,9 @@ Example usage:
     # → {"suggested_name": "Rick Astley - Never Gonna Give You Up", "strategy": "metadata"}
 
     result = run("video.mp4", options={"format": "{title}"})
+
+    result = run(".~add_metadata~podcast [dQw4w9WgXcQ].m4a")
+    # → strategy "scrub" if untagged: {"suggested_name": "podcast", ...}
 
     # CLI
     uv run -m stages.suggest_name --input podcast.m4a
@@ -65,6 +72,7 @@ DEFAULTS: dict = {
 # ---------------------------------------------------------------------------
 
 _RULES: list[tuple[str, str]] = [
+    (r"^(?:\.~[^~/\\]+~)+", ""),  # this repo's ".~stage~" pipeline temp-file prefix
     (r"[^\x20-\x7E\u00A0-\uFFFF]", ""),
     (r"\([^)]*(?:kbps|fps|AAC|kbit|AV1|VP9|HEVC|x264|x265|H\.?264|H\.?265)[^)]*\)", ""),
     (r"\(\s*[\dA-Za-z]+[_\-][\w\-]*\s*\)", ""),
