@@ -1,0 +1,17 @@
+verbose: true
+
+# File extensions treated as candidate inputs when scanning input_dir.
+extensions:
+  - ".m4a"
+  - ".mp3"
+  - ".opus"
+  - ".flac"
+  - ".wav"
+  - ".ogg"
+  - ".aac"
+  - ".mka"
+
+# Options forwarded verbatim to pipelines.scrub_youtube_podcast per file.
+# See pipelines/scrub_youtube_podcast.yaml for that pipeline's own defaults —
+# anything set here overrides them.
+pipeline: {}

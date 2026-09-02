@@ -1,5 +1,9 @@
 """Shared output formatting helpers for stages and pipelines.
 
+All output goes to stderr, never stdout — stdout stays free for a
+pipeline's own machine-readable output (e.g. a `_cli()` printing
+`json.dumps(result)`).
+
 Provides consistent terminal output style:
   - stages: dim labels, indented
   - pipelines: bold labels
@@ -33,17 +37,18 @@ Pipeline logging pattern:
 from __future__ import annotations
 
 import re
+import sys
 import time
 from contextlib import contextmanager
 from pathlib import Path
 
 from rich.console import Console
 
-_console = Console(highlight=False)
+_console = Console(file=sys.stderr, highlight=False)
 _LABEL_WIDTH = 22
 _PROGRESS_ICON = "[yellow]◷[/]"
 _DECORATED_PREFIX_RE = re.compile(
-    r"^(?:\[(?:[^[\]]+)\])*(?:✓|✗|!|\?|skip|◷|⚙|⏳|⌛|•)",
+    r"^(?:\[(?:[^[\]]+)\]\s*)*(?:✓|✗|!|\?|skip|◷|⚙|⏳|⌛|•)",
     re.IGNORECASE,
 )
 

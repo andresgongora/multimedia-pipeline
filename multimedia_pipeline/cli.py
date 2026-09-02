@@ -298,6 +298,97 @@ def download_youtube_media_cmd(
 
 
 # ---------------------------------------------------------------------------
+# batch-scrub-youtube-media / batch-scrub-youtube-podcast
+# ---------------------------------------------------------------------------
+
+BatchInputDirArg = Annotated[Path, typer.Argument(help="Directory of files to process.")]
+BatchOutputDirArg = Annotated[Path, typer.Argument(help="Directory to write results into.")]
+
+
+def _run_batch_pipeline(
+    pipeline_module: str,
+    name: str,
+    input_dir: Path,
+    output_dir: Path,
+    force: bool,
+    config: Path | None,
+    quiet: bool,
+    options: str | None,
+) -> None:
+    """Common batch-pipeline execution logic (folder in, folder out)."""
+    import importlib
+
+    run = importlib.import_module(pipeline_module).run
+
+    opts: dict = json.loads(options) if options else {}
+    if quiet:
+        opts["verbose"] = False
+
+    try:
+        result = run(
+            str(input_dir),
+            str(output_dir),
+            force=force,
+            config_path=config,
+            options=opts,
+        )
+    except Exception as exc:
+        typer.echo(f"{name} failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    if result["failed"]:
+        raise typer.Exit(1)
+
+
+@app.command(
+    name="batch-scrub-youtube-media",
+    help="Run scrub-youtube-media on every eligible media file in a folder.",
+)
+def batch_scrub_youtube_media_cmd(
+    input_dir: BatchInputDirArg,
+    output_dir: BatchOutputDirArg,
+    force: ForceOpt = False,
+    config: ConfigOpt = None,
+    quiet: QuietOpt = False,
+    options: OptionsOpt = None,
+) -> None:
+    _run_batch_pipeline(
+        "pipelines.batch_scrub_youtube_media",
+        "batch-scrub-youtube-media",
+        input_dir,
+        output_dir,
+        force,
+        config,
+        quiet,
+        options,
+    )
+
+
+@app.command(
+    name="batch-scrub-youtube-podcast",
+    help="Run scrub-youtube-podcast on every eligible audio file in a folder.",
+)
+def batch_scrub_youtube_podcast_cmd(
+    input_dir: BatchInputDirArg,
+    output_dir: BatchOutputDirArg,
+    force: ForceOpt = False,
+    config: ConfigOpt = None,
+    quiet: QuietOpt = False,
+    options: OptionsOpt = None,
+) -> None:
+    _run_batch_pipeline(
+        "pipelines.batch_scrub_youtube_podcast",
+        "batch-scrub-youtube-podcast",
+        input_dir,
+        output_dir,
+        force,
+        config,
+        quiet,
+        options,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

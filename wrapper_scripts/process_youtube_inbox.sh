@@ -14,15 +14,17 @@ set -euo pipefail
 #     YYYY.MM.DD/      ← processed output (created automatically per run)
 #
 # What it does:
-#   1. Finds all video files in <video-folder>/Inbox/
-#   2. Runs scrub-youtube-media on each:
-#        - Identifies the video on YouTube
-#        - Fetches SponsorBlock segments (sponsors, intros, outros, etc.)
-#        - Cuts them out in "fast" mode (stream-copy, no re-encode)
-#        - Scrubs privacy-sensitive metadata and embeds clean metadata
-#        - Suggests a clean filename and writes output to the dated folder
-#   3. Trashes the original on success; keeps it on failure
-#   4. Cleans up any empty subdirectories left in Inbox/
+#   1. Runs pipelines.batch_scrub_youtube_media once over <video-folder>/Inbox/,
+#      writing every eligible file's output into the dated folder (identify,
+#      SponsorBlock cut in "fast" mode, metadata scrub, clean filename).
+#   2. Trashes originals that were processed or already-skipped; keeps
+#      originals that failed, moving them into the dated folder instead.
+#   3. Cleans up any empty subdirectories left in Inbox/.
+#
+# The per-file batching itself lives in the pipeline
+# (pipelines/batch_scrub_youtube_media.py) — this script only owns the
+# personal policy the pipeline deliberately doesn't: trashing originals and
+# the dated output-folder convention.
 # ---------------------------------------------------------------------------
 
 # SCRIPT_DIR = the folder where the symlink lives (the video folder).
@@ -36,9 +38,6 @@ INBOX="$SCRIPT_DIR/Inbox"
 # Output goes into a dated subfolder created on first use each day.
 OUTDIR="$SCRIPT_DIR/$(date +%Y.%m.%d)"
 
-# Supported video extensions (case-insensitive match via find's -iregex).
-VIDEO_EXTS="mp4|mkv|webm|mov|m4v|avi|ts|m2ts|mts"
-
 # Resolve the real location of this script (following the symlink) so we can
 # cd into the project root and run uv from there, regardless of where the
 # symlink lives.
@@ -46,42 +45,32 @@ REAL_SCRIPT="$(readlink -f "$0")"
 PROJECT_DIR="$(cd "$(dirname "$REAL_SCRIPT")/.." && pwd)"
 cd "$PROJECT_DIR"
 
-# ---------------------------------------------------------------------------
-# Collect video files
-# ---------------------------------------------------------------------------
-
-mapfile -t files < <(find "$INBOX" -type f -regextype posix-extended -iregex ".*\\.($VIDEO_EXTS)$" 2>/dev/null)
-
-if [[ ${#files[@]} -eq 0 ]]; then
-    echo "No video files found in Inbox/"
+if [[ ! -d "$INBOX" ]]; then
+    echo "No Inbox found: $INBOX" >&2
     exit 0
 fi
 
 mkdir -p "$OUTDIR"
 
 # ---------------------------------------------------------------------------
-# Process each file
-#
-# Cut mode is "fast" by default (pipelines/scrub_youtube_media.yaml):
-#   stages.cut.mode: fast
-# This means SponsorBlock segments are removed via stream-copy (no re-encode).
+# Run the batch pipeline once over the whole Inbox/ (verbose off so stdout
+# is clean JSON — the pipeline logs its own per-file progress to the
+# terminal when run interactively without --options).
 # ---------------------------------------------------------------------------
 
-errors=0
-for f in "${files[@]}"; do
-    echo "▶ $f"
-    if uv run -m multimedia_pipeline scrub-youtube-media -o "$OUTDIR" --force "$f"; then
-        # Original safely processed — move to trash rather than hard-delete.
-        trash "$f"
-    else
-        # Pipeline could not process the file (e.g. unsupported codec, no
-        # YouTube match). Move it as-is to the output folder so it ends up
-        # alongside the successfully processed files rather than blocking Inbox.
-        echo "✗ Failed: $f — moving original to $OUTDIR/" >&2
-        mv "$f" "$OUTDIR/"
-        ((errors++)) || true
-    fi
-done
+result_json="$(uv run -m pipelines.batch_scrub_youtube_media "$INBOX" "$OUTDIR" --force --options '{"verbose": false}')"
+
+processed="$(jq '.processed' <<<"$result_json")"
+skipped="$(jq '.skipped' <<<"$result_json")"
+failed="$(jq '.failed' <<<"$result_json")"
+echo "$processed processed, $skipped skipped, $failed failed"
+
+# Trash originals that succeeded (processed or skipped); keep failures by
+# moving them, as-is, into the dated output folder instead of blocking Inbox.
+jq -j '.results[] | select(.status != "failed") | .input_path + "\u0000"' <<<"$result_json" \
+    | xargs -r -0 -I{} trash "{}" || true
+jq -j '.results[] | select(.status == "failed") | .input_path + "\u0000"' <<<"$result_json" \
+    | xargs -r -0 -I{} mv -n -t "$OUTDIR" "{}" || true
 
 # Remove any empty subdirectories left behind in Inbox/ after trashing files.
 find "$INBOX" -mindepth 1 -type d -empty -delete 2>/dev/null || true
@@ -90,7 +79,7 @@ find "$INBOX" -mindepth 1 -type d -empty -delete 2>/dev/null || true
 # Exit status
 # ---------------------------------------------------------------------------
 
-if [[ $errors -gt 0 ]]; then
-    echo "$errors file(s) failed" >&2
+if [[ "$failed" -gt 0 ]]; then
+    echo "$failed file(s) failed" >&2
     exit 1
 fi

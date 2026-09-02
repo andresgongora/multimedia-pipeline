@@ -42,6 +42,9 @@ Two kinds, both mandatory inputs first, then a fixed keyword-only tail
   playlist crawl), no single input/output file. Mandatory domain inputs
   (URL, DB path, media type, ...) stay positional, never folded into `options`.
   Return dict always has `results: list[dict]` and a `failed` count.
+  Batch pipeline that fans a directory out over an existing file pipeline
+  (one call per file): use `shared.batch.run_dir_batch` instead of
+  hand-rolling the discover/call/aggregate loop.
 
 ## Pipeline and runtime rules
 
