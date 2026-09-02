@@ -54,7 +54,7 @@ def _fake_download_ok(video_id: str) -> str:
 def test_invalid_media_type() -> None:
     print("\n--- test_invalid_media_type ---")
     try:
-        pipeline.run("https://playlist", "/tmp/out", "/tmp/db.json", "podcast")
+        pipeline.run("https://playlist", "/tmp/out", "podcast", db_path="/tmp/db.json")
         check("raises ValueError", False, "no exception")
     except ValueError:
         check("raises ValueError", True)
@@ -82,7 +82,7 @@ def test_download_all_new_and_records_db() -> None:
             patch.object(pipeline.download_youtube_media, "run", fake_download),
         ):
             result = pipeline.run(
-                "https://playlist", str(out_dir), str(db), "video", options={"verbose": False}
+                "https://playlist", str(out_dir), "video", db_path=str(db), options={"verbose": False}
             )
 
         check("2 requested", result["requested"] == 2, str(result))
@@ -121,10 +121,10 @@ def test_second_run_skips_known_urls() -> None:
             patch.object(pipeline.fetch_youtube_playlist, "run", _fake_fetch(_URLS)),
             patch.object(pipeline.download_youtube_media, "run", fake_download),
         ):
-            pipeline.run("https://playlist", str(out_dir), str(db), "video", options={"verbose": False})
+            pipeline.run("https://playlist", str(out_dir), "video", db_path=str(db), options={"verbose": False})
             first_calls = call_count["n"]
             result2 = pipeline.run(
-                "https://playlist", str(out_dir), str(db), "video", options={"verbose": False}
+                "https://playlist", str(out_dir), "video", db_path=str(db), options={"verbose": False}
             )
 
         check("first run made 2 download calls", first_calls == 2, str(first_calls))
@@ -156,7 +156,7 @@ def test_failed_download_not_recorded_and_others_continue() -> None:
             patch.object(pipeline.download_youtube_media, "run", fake_download),
         ):
             result = pipeline.run(
-                "https://playlist", str(out_dir), str(db), "video", options={"verbose": False}
+                "https://playlist", str(out_dir), "video", db_path=str(db), options={"verbose": False}
             )
 
         check("1 downloaded, 1 failed", result["downloaded"] == 1 and result["failed"] == 1, str(result))
@@ -196,7 +196,7 @@ def test_existing_file_on_disk_is_skipped_not_overwritten() -> None:
             patch.object(pipeline.download_youtube_media, "run", fake_download),
         ):
             result = pipeline.run(
-                "https://playlist", str(out_dir), str(db), "video", options={"verbose": False}
+                "https://playlist", str(out_dir), "video", db_path=str(db), options={"verbose": False}
             )
 
         check("download stage not called", called["n"] == 0)
@@ -206,12 +206,38 @@ def test_existing_file_on_disk_is_skipped_not_overwritten() -> None:
         check("not recorded in db", "https://www.youtube.com/watch?v=ccccccccccc" not in db_data)
 
 
+def test_no_db_path_skips_registry_and_processes_every_url() -> None:
+    print("\n--- test_no_db_path_skips_registry_and_processes_every_url ---")
+    called = {"n": 0}
+
+    def fake_download(url: str, output_path: str, *, options: dict | None = None) -> dict:
+        called["n"] += 1
+        Path(output_path).write_text("data")
+        return {"output_path": output_path, "title": "Title"}
+
+    with tempfile.TemporaryDirectory() as d:
+        out_dir = Path(d) / "out"
+        with (
+            patch.object(pipeline.fetch_youtube_playlist, "run", _fake_fetch(_URLS)),
+            patch.object(pipeline.download_youtube_media, "run", fake_download),
+            patch.object(pipeline.registry, "record") as record,
+        ):
+            result = pipeline.run("https://playlist", str(out_dir), "video", options={"verbose": False})
+
+        check("2 new", result["new"] == len(_URLS), str(result))
+        check("2 downloaded", result["downloaded"] == len(_URLS), str(result))
+        check("0 failed", result["failed"] == 0, str(result))
+        check("download called once per url", called["n"] == len(_URLS), str(called["n"]))
+        check("registry record not called", record.call_count == 0, str(record.call_count))
+
+
 if __name__ == "__main__":
     test_invalid_media_type()
     test_download_all_new_and_records_db()
     test_second_run_skips_known_urls()
     test_failed_download_not_recorded_and_others_continue()
     test_existing_file_on_disk_is_skipped_not_overwritten()
+    test_no_db_path_skips_registry_and_processes_every_url()
 
     print(f"\n{'=' * 40}")
     print(f"Results: {passed} passed, {failed} failed")

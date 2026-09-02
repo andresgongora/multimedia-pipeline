@@ -1,17 +1,20 @@
-"""Pipeline: download_youtube_media — download every new video in a public playlist.
+"""Pipeline: download_youtube_media — download videos in a public playlist.
 
 Given a playlist URL:
   1. List every video URL in the playlist.
-  2. Filter out URLs already in the download registry (not yet expired).
+  2. If db_path is given, filter out URLs already in the download registry.
   3. For each remaining URL, download audio or video (stages.download_youtube_media
      defaults: 1080p/av1 video, best native audio, original language).
-  4. On success, record the URL in the registry so a re-run skips it.
+  4. If db_path is given, record each successful URL in the registry.
   5. On failure (download error, unsupported URL, etc.), log and skip —
      the URL is NOT recorded, so the next run retries it.
 
 No further processing (no SponsorBlock, no metadata scrubbing, no
 filename cleanup beyond embedding the video title). Chain other pipelines
 on the output directory afterward if needed.
+
+db_path is optional. When omitted, no dedup registry is used: every playlist
+URL is (re-)downloaded each run, with no persisted skip-list.
 
 Output filename: "{sanitized title} [{video_id}]{ext}". The bracketed
 video ID lets downstream pipelines (e.g. scrub_youtube_media) identify the
@@ -33,6 +36,7 @@ Config (pipelines/download_youtube_media.yaml):
 Usage:
     uv run -m pipelines.download_youtube_media PLAYLIST_URL /out/dir video --db state/videos.json
     uv run -m pipelines.download_youtube_media PLAYLIST_URL /out/dir audio --db state/videos.json
+    uv run -m pipelines.download_youtube_media PLAYLIST_URL /out/dir video
 """
 
 from __future__ import annotations
@@ -69,9 +73,9 @@ def _extract_video_id(url: str) -> str | None:
 def run(
     playlist_url: str,
     output_dir: str,
-    db_path: str,
     media_type: str,
     *,
+    db_path: str | None = None,
     force: bool = False,
     config_path: Path | None = None,
     options: dict | None = None,
@@ -94,7 +98,7 @@ def run(
 
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    db = Path(db_path)
+    db = Path(db_path) if db_path is not None else None
 
     # ── 2. Fetch playlist & filter against registry ───────────────────────
     start = time.monotonic()
@@ -102,7 +106,7 @@ def run(
         pipeline_log(_PIPELINE, f"[cyan]{playlist_url}[/]")
 
     urls = fetch_youtube_playlist.run(playlist_url, options={"verbose": verbose})["video_urls"]
-    new_urls = registry.filter_new(urls, db, max_age_days=max_age_days)
+    new_urls = registry.filter_new(urls, db, max_age_days=max_age_days) if db is not None else urls
 
     if verbose:
         pipeline_log(
@@ -166,7 +170,8 @@ def run(
                     final.unlink()
                 provisional.rename(final)
 
-            registry.record(url, db, metadata={"video_id": video_id, "title": title})
+            if db is not None:
+                registry.record(url, db, metadata={"video_id": video_id, "title": title})
             downloaded += 1
             results.append({"url": url, "status": "downloaded", "output_path": str(final)})
             if verbose:
@@ -208,7 +213,7 @@ def _cli() -> None:
     parser.add_argument("playlist_url")
     parser.add_argument("output_dir")
     parser.add_argument("media_type", choices=["video", "audio"])
-    parser.add_argument("--db", required=True, help="Download registry JSON path")
+    parser.add_argument("--db", default=None, help="Download registry JSON path (optional — omit to skip dedup)")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--config", type=Path, default=None)
     parser.add_argument("--options", type=json.loads, default="{}")
@@ -216,8 +221,8 @@ def _cli() -> None:
     result = run(
         args.playlist_url,
         args.output_dir,
-        args.db,
         args.media_type,
+        db_path=args.db,
         force=args.force,
         config_path=args.config,
         options=args.options,

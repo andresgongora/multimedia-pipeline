@@ -252,7 +252,7 @@ OutputDirArg = Annotated[Path, typer.Argument(help="Directory to download into."
 MediaTypeOpt = Annotated[
     str, typer.Option("--type", help="Media type to download.", click_type=Choice(["video", "audio"]))
 ]
-DbOpt = Annotated[Path, typer.Option("--db", help="Download-registry JSON path.")]
+DbOpt = Annotated[Path | None, typer.Option("--db", help="Download-registry JSON path (optional — omit to skip dedup).")]
 
 
 @app.command(
@@ -267,7 +267,7 @@ def download_youtube_media_cmd(
     playlist_url: PlaylistArg,
     output_dir: OutputDirArg,
     media_type: MediaTypeOpt,
-    db: DbOpt,
+    db: DbOpt = None,
     force: ForceOpt = False,
     config: ConfigOpt = None,
     quiet: QuietOpt = False,
@@ -283,8 +283,8 @@ def download_youtube_media_cmd(
         result = pipeline.run(
             playlist_url,
             str(output_dir),
-            str(db),
             media_type,
+            db_path=str(db) if db else None,
             force=force,
             config_path=config,
             options=opts,
