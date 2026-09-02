@@ -108,6 +108,7 @@ def run(
         return {
             "skipped": True,
             "input_path": str(video),
+            "output_path": str(output_video),
             "output_video_path": str(output_video),
             "output_audio_path": str(output_audio),
         }
@@ -145,7 +146,9 @@ def run(
             temp_sanitized.unlink()
 
     return {
+        "skipped": False,
         "input_path": str(video),
+        "output_path": str(output_video),
         "output_video_path": str(output_video),
         "output_audio_path": str(output_audio),
         "sanitize_result": sanitize_result,

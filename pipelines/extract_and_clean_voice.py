@@ -80,6 +80,7 @@ def run(
     # ── 5. Execute ────────────────────────────────────────────────────────
     with pipeline_timer(_PIPELINE, video.name, verbose) as pt:
         result = extract_and_clean_voice.run(str(video), str(output_wav), options=stage_opts)
+        result["skipped"] = False
         result["input_path"] = str(video)
         pt["output"] = output_wav.name
 

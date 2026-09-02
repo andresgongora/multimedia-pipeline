@@ -40,7 +40,7 @@ from pathlib import Path
 from shared.config import load_config, propagate_verbose
 from shared.ffprobe import get_duration
 from shared.io import safe_output_path
-from shared.output import pipeline_timer
+from shared.output import pipeline_log, pipeline_timer
 import stages.add_metadata as add_metadata
 import stages.convert_to_wav as convert_to_wav
 import stages.cut as cut
@@ -232,7 +232,6 @@ def run(
             )
             current = temp_meta
 
-            # ── 5. Suggest name & finalize ────────────────────────────────────
             name_result = suggest_name.run(
                 str(current),
                 options={
@@ -248,7 +247,15 @@ def run(
                 final = safe_output_path(src, out_dir / (suggested + ".m4a"))
 
             if final.exists() and not force:
-                raise FileExistsError(f"Output already exists: {final}  (use --force to overwrite)")
+                if verbose:
+                    pipeline_log(_PIPELINE, f"[dim]skip[/] {final.name} — output exists")
+                return {
+                    "skipped": True,
+                    "input_path": str(src),
+                    "output_path": str(final),
+                    "identified": id_result["identified"],
+                    "video_id": id_result.get("video_id"),
+                }
             if final.exists():
                 final.unlink()
 
@@ -256,6 +263,8 @@ def run(
             pt["output"] = final.name
 
             return {
+                "skipped": False,
+                "input_path": str(src),
                 "output_path": str(final),
                 "identified": id_result["identified"],
                 "video_id": id_result.get("video_id"),

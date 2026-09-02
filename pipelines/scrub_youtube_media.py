@@ -171,7 +171,15 @@ def run(
                 final = safe_output_path(src, out_dir / (suggested + src.suffix))
 
             if final.exists() and not force:
-                raise FileExistsError(f"Output already exists: {final}  (use --force to overwrite)")
+                if verbose:
+                    pipeline_log(_PIPELINE, f"[dim]skip[/] {final.name} — output exists")
+                return {
+                    "skipped": True,
+                    "input_path": str(src),
+                    "output_path": str(final),
+                    "identified": id_result["identified"],
+                    "video_id": id_result.get("video_id"),
+                }
             if final.exists():
                 final.unlink()
 
@@ -179,6 +187,8 @@ def run(
             pt["output"] = final.name
 
             return {
+                "skipped": False,
+                "input_path": str(src),
                 "output_path": str(final),
                 "identified": id_result["identified"],
                 "video_id": id_result.get("video_id"),

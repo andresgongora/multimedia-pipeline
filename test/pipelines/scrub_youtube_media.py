@@ -26,10 +26,10 @@ from shared.config import load_config
 _DEFAULT_CONFIG = ROOT / "pipelines" / "scrub_youtube_media.yaml"
 
 SAMPLE_AUDIO = (
-    ROOT / "test" / "sample" / "Wearing the Wrong Hat in the 1920's Tales From the Bottle.m4a"
+    ROOT / "test" / "sample" / "Wearing the Wrong Hat in the 1920’s Tales From the Bottle.m4a"
 )
 SAMPLE_VIDEO = (
-    ROOT / "test" / "sample" / "Wearing the Wrong Hat in the 1920's Tales From the Bottle.mp4"
+    ROOT / "test" / "sample" / "Wearing the Wrong Hat in the 1920’s Tales From the Bottle.mp4"
 )
 SAMPLE_UNIDENTIFIABLE = ROOT / "test" / "sample" / "AUG.scrubbed.mp4"
 OUTDIR = ROOT / "test" / "output"
@@ -151,7 +151,7 @@ def test_pipeline_video() -> None:
 
 
 def test_pipeline_no_overwrite() -> None:
-    """Must raise FileExistsError when output exists and force=False."""
+    """Must return {"skipped": True, ...} when output exists and force=False."""
     print("\n--- test_pipeline_no_overwrite ---")
     sample = SAMPLE_AUDIO if SAMPLE_AUDIO.exists() else SAMPLE_VIDEO
     if not sample.exists():
@@ -164,12 +164,10 @@ def test_pipeline_no_overwrite() -> None:
         out = Path(result["output_path"])
         check("first run produced output", out.exists())
 
-        # Second run without force must fail
-        try:
-            run(str(sample), output_dir=tmpdir, force=False, options={"verbose": False})
-            check("raises FileExistsError on second run", False, "no exception")
-        except FileExistsError:
-            check("raises FileExistsError on second run", True)
+        # Second run without force must skip, not raise
+        result_skip = run(str(sample), output_dir=tmpdir, force=False, options={"verbose": False})
+        check("second run returns skipped=True", result_skip.get("skipped") is True)
+        check("skipped result keeps output_path", result_skip.get("output_path") == str(out))
 
         # With force=True it must succeed
         result2 = run(str(sample), output_dir=tmpdir, force=True, options={"verbose": False})
@@ -179,9 +177,9 @@ def test_pipeline_no_overwrite() -> None:
 def test_pipeline_no_sponsorblock_fallback() -> None:
     """Disabling search_fallback ensures the pipeline completes even without identification."""
     print("\n--- test_pipeline_no_sponsorblock_fallback ---")
-    sample = SAMPLE_AUDIO if SAMPLE_AUDIO.exists() else SAMPLE_VIDEO
+    sample = SAMPLE_UNIDENTIFIABLE
     if not sample.exists():
-        print("  SKIP  no sample file available")
+        print(f"  SKIP  sample not found: {sample.name}")
         return
 
     with tempfile.TemporaryDirectory() as tmpdir:
