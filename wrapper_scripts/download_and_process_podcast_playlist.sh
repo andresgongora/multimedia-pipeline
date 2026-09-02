@@ -18,7 +18,7 @@ set -euo pipefail
 #   <podcast-folder>/
 #     .youtube_playlist         ← file containing the playlist URL (first line)
 #     Inbox/                    ← disposable download work dir (wiped every run)
-#     YYYY.MM.DD/                ← scrubbed output (created automatically per run)
+#     YYYY.Www/                  ← scrubbed output (created automatically per ISO week)
 #     .download_registry.json   ← dedup DB (created automatically)
 #
 # Inbox/ here is *not* a drop-and-process-later folder like in the
@@ -46,7 +46,7 @@ if [[ -z "$PLAYLIST_URL" ]]; then
 fi
 
 WORK_DIR="$SCRIPT_DIR/Inbox"
-OUTDIR="$SCRIPT_DIR/$(date +%Y.%m.%d)"
+OUTDIR="$SCRIPT_DIR/$(date +%G.W%V)"
 DB_PATH="$SCRIPT_DIR/.download_registry.json"
 
 mkdir -p "$OUTDIR"
