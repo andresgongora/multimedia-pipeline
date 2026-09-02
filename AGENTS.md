@@ -40,7 +40,9 @@ Two kinds, both mandatory inputs first, then a fixed keyword-only tail
   output + `force=False` → return `{"skipped": True, ...}`, never raise.
 - **Batch pipeline** — aggregate operation over many discovered items (e.g. a
   playlist crawl), no single input/output file. Mandatory domain inputs
-  (URL, DB path, media type, ...) stay positional, never folded into `options`.
+  (URL, media type, ...) stay positional, never folded into `options`.
+  An optional domain input with a real default (e.g. a dedup DB path) may
+  instead be keyword-only, alongside `force`/`config_path`/`options`.
   Return dict always has `results: list[dict]` and a `failed` count.
   Batch pipeline that fans a directory out over an existing file pipeline
   (one call per file): use `shared.batch.run_dir_batch` instead of

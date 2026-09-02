@@ -54,7 +54,7 @@ import stages.suggest_name as suggest_name
 _PIPELINE = "scrub_youtube_podcast"
 _DEFAULT_CONFIG = Path(__file__).with_suffix(".yaml")
 
-_AUDIO_EXTS = {".m4a", ".mp3", ".opus", ".flac", ".wav", ".ogg", ".aac"}
+_AUDIO_EXTS = {".m4a", ".mp3", ".opus", ".flac", ".wav", ".ogg", ".aac", ".mka"}
 _VIDEO_EXTS = {".mp4", ".mov", ".mkv", ".avi", ".mts", ".m2ts", ".webm"}
 
 

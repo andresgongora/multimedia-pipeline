@@ -1,0 +1,16 @@
+verbose: true
+
+# Options forwarded verbatim to pipelines.download_youtube_media.
+# See pipelines/download_youtube_media.yaml for that pipeline's own
+# defaults — anything set here overrides them.
+download: {}
+
+# Options forwarded verbatim to pipelines.batch_scrub_youtube_media
+# (used when media_type == "video"). See
+# pipelines/batch_scrub_youtube_media.yaml for defaults.
+scrub_media: {}
+
+# Options forwarded verbatim to pipelines.batch_scrub_youtube_podcast
+# (used when media_type == "audio"). See
+# pipelines/batch_scrub_youtube_podcast.yaml for defaults.
+scrub_podcast: {}

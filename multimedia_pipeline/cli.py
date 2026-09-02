@@ -253,6 +253,10 @@ MediaTypeOpt = Annotated[
     str, typer.Option("--type", help="Media type to download.", click_type=Choice(["video", "audio"]))
 ]
 DbOpt = Annotated[Path | None, typer.Option("--db", help="Download-registry JSON path (optional — omit to skip dedup).")]
+WorkDirOpt = Annotated[
+    Path | None,
+    typer.Option("--work-dir", help="Download work directory (optional — default: hidden dir inside output_dir). Always wiped on completion."),
+]
 
 
 @app.command(
@@ -291,6 +295,55 @@ def download_youtube_media_cmd(
         )
     except Exception as exc:
         typer.echo(f"download-youtube-media failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    if result["failed"]:
+        raise typer.Exit(1)
+
+
+# ---------------------------------------------------------------------------
+# download-youtube-playlist
+# ---------------------------------------------------------------------------
+
+
+@app.command(
+    name="download-youtube-playlist",
+    help=(
+        "Download an entire public YouTube playlist and scrub every file in "
+        "one call: video → scrub-youtube-media, audio → scrub-youtube-podcast. "
+        "Chains download-youtube-media and the matching batch-scrub pipeline."
+    ),
+)
+def download_youtube_playlist_cmd(
+    playlist_url: PlaylistArg,
+    output_dir: OutputDirArg,
+    media_type: MediaTypeOpt,
+    work_dir: WorkDirOpt = None,
+    db: DbOpt = None,
+    force: ForceOpt = False,
+    config: ConfigOpt = None,
+    quiet: QuietOpt = False,
+    options: OptionsOpt = None,
+) -> None:
+    import pipelines.download_youtube_playlist as pipeline
+
+    opts: dict = json.loads(options) if options else {}
+    if quiet:
+        opts["verbose"] = False
+
+    try:
+        result = pipeline.run(
+            playlist_url,
+            str(output_dir),
+            media_type,
+            work_dir=str(work_dir) if work_dir else None,
+            db_path=str(db) if db else None,
+            force=force,
+            config_path=config,
+            options=opts,
+        )
+    except Exception as exc:
+        typer.echo(f"download-youtube-playlist failed: {exc}", err=True)
         raise typer.Exit(1) from exc
 
     if result["failed"]:

@@ -22,6 +22,8 @@ TESTS = [
     ROOT / "test" / "pipelines" / "scrub_youtube_podcast_config.py",
     ROOT / "test" / "pipelines" / "batch_scrub_youtube_media.py",
     ROOT / "test" / "pipelines" / "batch_scrub_youtube_podcast.py",
+    ROOT / "test" / "pipelines" / "download_youtube_media.py",
+    ROOT / "test" / "pipelines" / "download_youtube_playlist.py",
     ROOT / "test" / "stages" / "sanitize_video.py",
 ]
 
