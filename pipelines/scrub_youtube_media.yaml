@@ -1,5 +1,8 @@
 verbose: true
 
+# When true, only clean the filename and move the file without media processing.
+name_only: false
+
 stages:
   identify:
     search_fallback: true

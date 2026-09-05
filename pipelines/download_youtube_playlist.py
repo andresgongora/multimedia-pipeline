@@ -6,10 +6,12 @@ pipelines back to back, no per-file logic duplicated here.
 Given a playlist URL:
   1. Download every eligible video/audio (pipelines.download_youtube_media)
      into a work directory — by default a hidden directory inside output_dir,
-     or an explicit directory via work_dir.
+     or an explicit directory via work_dir. ``media_type="music"`` downloads
+     audio and uses the name-only scrub path below.
   2. Batch-scrub every downloaded file into output_dir:
        - media_type="video" → pipelines.batch_scrub_youtube_media
        - media_type="audio" → pipelines.batch_scrub_youtube_podcast
+       - media_type="music" → pipelines.batch_scrub_youtube_media in name-only mode
  3. A file that downloaded fine but failed scrubbing is moved, unscrubbed,
       into output_dir as-is (never silently lost) instead of staying stuck
       in the work directory.
@@ -31,11 +33,15 @@ Config (pipelines/download_youtube_playlist.yaml):
                       (used when media_type == "video")
     scrub_podcast   — options forwarded to pipelines.batch_scrub_youtube_podcast
                       (used when media_type == "audio")
+    scrub_music     — options forwarded to pipelines.batch_scrub_youtube_media
+                      (used when media_type == "music"; name-only by default)
 
-Usage:
-    uv run -m pipelines.download_youtube_playlist PLAYLIST_URL /out video
-    uv run -m pipelines.download_youtube_playlist PLAYLIST_URL /out audio --db state/podcasts.json
-    uv run -m pipelines.download_youtube_playlist PLAYLIST_URL /out audio --work-dir /tmp/dl
+    Usage:
+        uv run -m pipelines.download_youtube_playlist PLAYLIST_URL /out video
+        uv run -m pipelines.download_youtube_playlist PLAYLIST_URL /out audio \
+            --db state/podcasts.json
+        uv run -m pipelines.download_youtube_playlist PLAYLIST_URL /out music
+        uv run -m pipelines.download_youtube_playlist PLAYLIST_URL /out audio --work-dir /tmp/dl
 """
 
 from __future__ import annotations
@@ -43,11 +49,11 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from shared.config import load_config
-from shared.output import pipeline_log
 import pipelines.batch_scrub_youtube_media as batch_scrub_youtube_media
 import pipelines.batch_scrub_youtube_podcast as batch_scrub_youtube_podcast
 import pipelines.download_youtube_media as download_youtube_media
+from shared.config import load_config
+from shared.output import pipeline_log
 
 _PIPELINE = "download_youtube_playlist"
 _DEFAULT_CONFIG = Path(__file__).with_suffix(".yaml")
@@ -116,18 +122,27 @@ def run(
     Raises:
         ValueError: if media_type is invalid.
     """
-    if media_type not in ("video", "audio"):
-        raise ValueError(f"Unknown media_type '{media_type}'. Choose 'video' or 'audio'.")
+    if media_type not in ("video", "audio", "music"):
+        raise ValueError(f"Unknown media_type '{media_type}'. Choose 'video', 'audio', or 'music'.")
 
     # ── 1. Config ─────────────────────────────────────────────────────────
     cfg = load_config(_DEFAULT_CONFIG, config_path, options)
     verbose: bool = cfg.get("verbose", True)
     download_opts = dict(cfg.get("download", {}))
     download_opts.setdefault("verbose", verbose)
-    scrub_key = "scrub_media" if media_type == "video" else "scrub_podcast"
+    scrub_key = {
+        "video": "scrub_media",
+        "audio": "scrub_podcast",
+        "music": "scrub_music",
+    }[media_type]
     scrub_opts = dict(cfg.get(scrub_key, {}))
     scrub_opts.setdefault("verbose", verbose)
-    scrub_batch = batch_scrub_youtube_media if media_type == "video" else batch_scrub_youtube_podcast
+    if media_type == "music":
+        scrub_opts.setdefault("pipeline", {})["name_only"] = True
+    scrub_batch = (
+        batch_scrub_youtube_podcast if media_type == "audio" else batch_scrub_youtube_media
+    )
+    download_media_type = "audio" if media_type == "music" else media_type
 
     # ── 2. Prepare directories ──────────────────────────────────────────────
     out_dir = Path(output_dir)
@@ -143,7 +158,7 @@ def run(
         dl_result = download_youtube_media.run(
             playlist_url,
             str(work_dir_path),
-            media_type,
+            download_media_type,
             db_path=db_path,
             force=force,
             options=download_opts,
@@ -196,13 +211,20 @@ def _cli() -> None:
     parser = argparse.ArgumentParser(description="Download and scrub an entire YouTube playlist.")
     parser.add_argument("playlist_url")
     parser.add_argument("output_dir")
-    parser.add_argument("media_type", choices=["video", "audio"])
+    parser.add_argument("media_type", choices=["video", "audio", "music"])
     parser.add_argument(
         "--work-dir",
         default=None,
-        help="Download work directory (optional — default: hidden dir inside output_dir). Always wiped on completion.",
+        help=(
+            "Download work directory (optional — default: hidden dir inside output_dir). "
+            "Always wiped on completion."
+        ),
     )
-    parser.add_argument("--db", default=None, help="Download registry JSON path (optional — omit to skip dedup)")
+    parser.add_argument(
+        "--db",
+        default=None,
+        help="Download registry JSON path (optional — omit to skip dedup)",
+    )
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--config", type=Path, default=None)
     parser.add_argument("--options", type=json.loads, default="{}")

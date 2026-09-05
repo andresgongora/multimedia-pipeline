@@ -113,6 +113,7 @@ def _run_pipeline(
 # extract-and-clean-voice
 # ---------------------------------------------------------------------------
 
+
 @app.command(
     name="extract-and-clean-voice",
     help="Extract and clean voice from video file(s). Output is a WAV next to each source.",
@@ -145,6 +146,7 @@ def extract_and_clean_voice(
 # remove-silences-and-extract-clean-voice
 # ---------------------------------------------------------------------------
 
+
 @app.command(
     name="remove-silences-and-extract-clean-voice",
     help="Remove silences then write a trimmed video and cleaned WAV next to each source.",
@@ -176,6 +178,7 @@ def remove_silences_and_extract_clean_voice(
 # ---------------------------------------------------------------------------
 # scrub-youtube-media
 # ---------------------------------------------------------------------------
+
 
 @app.command(
     name="scrub-youtube-media",
@@ -211,6 +214,7 @@ def scrub_youtube_media(
 # ---------------------------------------------------------------------------
 # scrub-youtube-podcast
 # ---------------------------------------------------------------------------
+
 
 @app.command(
     name="scrub-youtube-podcast",
@@ -250,12 +254,30 @@ def scrub_youtube_podcast(
 PlaylistArg = Annotated[str, typer.Argument(help="Public YouTube playlist URL.")]
 OutputDirArg = Annotated[Path, typer.Argument(help="Directory to download into.")]
 MediaTypeOpt = Annotated[
-    str, typer.Option("--type", help="Media type to download.", click_type=Choice(["video", "audio"]))
+    str,
+    typer.Option("--type", help="Media type to download.", click_type=Choice(["video", "audio"])),
 ]
-DbOpt = Annotated[Path | None, typer.Option("--db", help="Download-registry JSON path (optional — omit to skip dedup).")]
+PlaylistMediaTypeOpt = Annotated[
+    str,
+    typer.Option(
+        "--type",
+        help="Media type to download.",
+        click_type=Choice(["video", "audio", "music"]),
+    ),
+]
+DbOpt = Annotated[
+    Path | None,
+    typer.Option("--db", help="Download-registry JSON path (optional — omit to skip dedup)."),
+]
 WorkDirOpt = Annotated[
     Path | None,
-    typer.Option("--work-dir", help="Download work directory (optional — default: hidden dir inside output_dir). Always wiped on completion."),
+    typer.Option(
+        "--work-dir",
+        help=(
+            "Download work directory (optional — default: hidden dir inside output_dir). "
+            "Always wiped on completion."
+        ),
+    ),
 ]
 
 
@@ -310,14 +332,15 @@ def download_youtube_media_cmd(
     name="download-youtube-playlist",
     help=(
         "Download an entire public YouTube playlist and scrub every file in "
-        "one call: video → scrub-youtube-media, audio → scrub-youtube-podcast. "
+        "one call: video → scrub-youtube-media, audio → scrub-youtube-podcast, "
+        "music → filename-only scrub. "
         "Chains download-youtube-media and the matching batch-scrub pipeline."
     ),
 )
 def download_youtube_playlist_cmd(
     playlist_url: PlaylistArg,
     output_dir: OutputDirArg,
-    media_type: MediaTypeOpt,
+    media_type: PlaylistMediaTypeOpt,
     work_dir: WorkDirOpt = None,
     db: DbOpt = None,
     force: ForceOpt = False,

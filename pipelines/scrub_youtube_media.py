@@ -15,6 +15,7 @@ data the file is still processed through the metadata steps.
 
 Config (pipelines/scrub_youtube_media.yaml):
     verbose              — print progress (default: true)
+    name_only            — only run suggest_name and move the file (default: false)
     stages.identify      — options for identify_youtube_media stage
     stages.sponsorblock  — options for fetch_sponsorblock_timestamps stage
     stages.cut           — options for cut stage
@@ -31,15 +32,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from shared.config import load_config, propagate_verbose
-from shared.io import safe_output_path
-from shared.output import pipeline_log, pipeline_timer
 import stages.add_metadata as add_metadata
 import stages.cut as cut
 import stages.fetch_sponsorblock_timestamps as fetch_sponsorblock
 import stages.identify_youtube_media as identify
 import stages.scrub_metadata as scrub_metadata
 import stages.suggest_name as suggest_name
+from shared.config import load_config, propagate_verbose
+from shared.io import safe_output_path
+from shared.output import pipeline_log, pipeline_timer
 
 _PIPELINE = "scrub_youtube_media"
 _DEFAULT_CONFIG = Path(__file__).with_suffix(".yaml")
@@ -66,6 +67,56 @@ def run(
     verbose: bool = cfg.get("verbose", True)
     propagate_verbose(cfg)
     stage_cfg = cfg.get("stages", {})
+
+    if cfg.get("name_only", False):
+        src = Path(input_path)
+        if not src.exists():
+            raise FileNotFoundError(f"Input not found: {src}")
+
+        out_dir = Path(output_dir) if output_dir else src.parent
+        out_dir.mkdir(parents=True, exist_ok=True)
+        with pipeline_timer(_PIPELINE, src.name, verbose) as pt:
+            name_result = suggest_name.run(
+                str(src),
+                options={
+                    **stage_cfg.get("suggest_name", {}),
+                    "verbose": False,
+                },
+            )
+            suggested = name_result["suggested_name"]
+            if output_path:
+                final = safe_output_path(src, Path(output_path))
+            else:
+                final = safe_output_path(src, out_dir / (suggested + src.suffix))
+
+            if final.exists() and not force:
+                if verbose:
+                    pipeline_log(_PIPELINE, f"[dim]skip[/] {final.name} — output exists")
+                return {
+                    "skipped": True,
+                    "input_path": str(src),
+                    "output_path": str(final),
+                    "identified": False,
+                    "video_id": None,
+                    "removed_segments": 0,
+                    "suggested_name": suggested,
+                    "sponsorblock_found": False,
+                }
+            if final.exists():
+                final.unlink()
+
+            src.rename(final)
+            pt["output"] = final.name
+            return {
+                "skipped": False,
+                "input_path": str(src),
+                "output_path": str(final),
+                "identified": False,
+                "video_id": None,
+                "removed_segments": 0,
+                "suggested_name": suggested,
+                "sponsorblock_found": False,
+            }
 
     # ── 2. Validate input ─────────────────────────────────────────────────
     src = Path(input_path)

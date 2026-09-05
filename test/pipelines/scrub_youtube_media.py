@@ -12,16 +12,16 @@ Tests:
 
 from __future__ import annotations
 
-import json
 import sys
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
-from pipelines.scrub_youtube_media import run
-from shared.config import load_config
+import pipelines.scrub_youtube_media as pipeline  # noqa: E402
+from shared.config import load_config  # noqa: E402
 
 _DEFAULT_CONFIG = ROOT / "pipelines" / "scrub_youtube_media.yaml"
 
@@ -62,6 +62,7 @@ def test_config_defaults() -> None:
     print("\n--- test_config_defaults ---")
     cfg = load_config(_DEFAULT_CONFIG)
     check("verbose defaults true", cfg.get("verbose") is True)
+    check("name_only defaults false", cfg.get("name_only") is False)
     check("has stages section", isinstance(cfg.get("stages"), dict))
     check("has identify stage config", "identify" in cfg["stages"])
     check("has sponsorblock stage config", "sponsorblock" in cfg["stages"])
@@ -85,7 +86,7 @@ def test_config_merge() -> None:
 def test_missing_input_raises() -> None:
     print("\n--- test_missing_input_raises ---")
     try:
-        run("/definitely/nonexistent/file.m4a")
+        pipeline.run("/definitely/nonexistent/file.m4a")
         check("raises FileNotFoundError", False, "no exception raised")
     except FileNotFoundError:
         check("raises FileNotFoundError", True)
@@ -104,7 +105,7 @@ def test_pipeline_audio() -> None:
         return
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        result = run(
+        result = pipeline.run(
             str(SAMPLE_AUDIO),
             output_dir=tmpdir,
             options={"verbose": True},
@@ -135,7 +136,7 @@ def test_pipeline_video() -> None:
         return
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        result = run(
+        result = pipeline.run(
             str(SAMPLE_VIDEO),
             output_dir=tmpdir,
             options={"verbose": True},
@@ -160,17 +161,21 @@ def test_pipeline_no_overwrite() -> None:
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # First run
-        result = run(str(sample), output_dir=tmpdir, options={"verbose": False})
+        result = pipeline.run(str(sample), output_dir=tmpdir, options={"verbose": False})
         out = Path(result["output_path"])
         check("first run produced output", out.exists())
 
         # Second run without force must skip, not raise
-        result_skip = run(str(sample), output_dir=tmpdir, force=False, options={"verbose": False})
+        result_skip = pipeline.run(
+            str(sample), output_dir=tmpdir, force=False, options={"verbose": False}
+        )
         check("second run returns skipped=True", result_skip.get("skipped") is True)
         check("skipped result keeps output_path", result_skip.get("output_path") == str(out))
 
         # With force=True it must succeed
-        result2 = run(str(sample), output_dir=tmpdir, force=True, options={"verbose": False})
+        result2 = pipeline.run(
+            str(sample), output_dir=tmpdir, force=True, options={"verbose": False}
+        )
         check("force=True succeeds", Path(result2["output_path"]).exists())
 
 
@@ -183,7 +188,7 @@ def test_pipeline_no_sponsorblock_fallback() -> None:
         return
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        result = run(
+        result = pipeline.run(
             str(sample),
             output_dir=tmpdir,
             options={
@@ -215,7 +220,7 @@ def test_pipeline_unidentifiable_video() -> None:
         print(f"  SKIP  sample not found: {SAMPLE_UNIDENTIFIABLE.name}")
         return
 
-    result = run(
+    result = pipeline.run(
         str(SAMPLE_UNIDENTIFIABLE),
         output_dir=str(OUTDIR),
         force=True,
@@ -237,6 +242,42 @@ def test_pipeline_unidentifiable_video() -> None:
         print("  NOTE  output file was NOT written — pipeline did not produce a file")
 
 
+def test_name_only_skips_media_processing() -> None:
+    print("\n--- test_name_only_skips_media_processing ---")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        source = Path(tmpdir) / "Track (1080p) [dQw4w9WgXcQ].mka"
+        source.write_text("audio")
+        with (
+            patch.object(
+                pipeline.suggest_name,
+                "run",
+                return_value={"suggested_name": "Track"},
+            ) as suggest,
+            patch.object(pipeline.identify, "run") as identify,
+            patch.object(pipeline.fetch_sponsorblock, "run") as sponsorblock,
+            patch.object(pipeline.cut, "run") as cut,
+            patch.object(pipeline.scrub_metadata, "run") as scrub_metadata,
+        ):
+            result = pipeline.run(
+                str(source),
+                output_dir=tmpdir,
+                options={"verbose": False, "name_only": True},
+            )
+
+        check("name-only output exists", Path(result["output_path"]).exists())
+        check("name-only output has clean name", Path(result["output_path"]).name == "Track.mka")
+        check("source moved", not source.exists())
+        check("name stage called", suggest.call_count == 1, str(suggest.call_count))
+        check("identify skipped", identify.call_count == 0, str(identify.call_count))
+        check("SponsorBlock skipped", sponsorblock.call_count == 0, str(sponsorblock.call_count))
+        check("cut skipped", cut.call_count == 0, str(cut.call_count))
+        check(
+            "metadata scrub skipped",
+            scrub_metadata.call_count == 0,
+            str(scrub_metadata.call_count),
+        )
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -250,6 +291,7 @@ if __name__ == "__main__":
     test_pipeline_no_overwrite()
     test_pipeline_no_sponsorblock_fallback()
     test_pipeline_unidentifiable_video()
+    test_name_only_skips_media_processing()
 
     print(f"\n{'=' * 40}")
     print(f"  {passed} passed, {failed} failed")

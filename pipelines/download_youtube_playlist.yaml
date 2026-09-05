@@ -14,3 +14,10 @@ scrub_media: {}
 # (used when media_type == "audio"). See
 # pipelines/batch_scrub_youtube_podcast.yaml for defaults.
 scrub_podcast: {}
+
+# Options forwarded verbatim to pipelines.batch_scrub_youtube_media
+# (used when media_type == "music"). Music only scrubs the filename; it does
+# not identify media, query SponsorBlock, cut segments, or alter metadata.
+scrub_music:
+  pipeline:
+    name_only: true
