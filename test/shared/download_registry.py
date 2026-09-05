@@ -166,6 +166,18 @@ def test_expired_entry_treated_as_new() -> None:
     check("expired entry re-surfaces as new", new == ["https://youtu.be/a"], str(new))
 
 
+def test_default_retains_old_entry() -> None:
+    print("\n--- test_default_retains_old_entry ---")
+    db = _tmp_db()
+    old_ts = (datetime.now(timezone.utc) - timedelta(days=100)).isoformat()
+    db.parent.mkdir(parents=True, exist_ok=True)
+    db.write_text(json.dumps({"https://youtu.be/a": {"downloaded_at": old_ts}}))
+    new = reg.filter_new(["https://youtu.be/a"], db)
+    check("old entry remains known by default", new == [], str(new))
+    data = json.loads(db.read_text())
+    check("old entry remains persisted", "https://youtu.be/a" in data, str(data))
+
+
 def test_expired_entry_pruned_from_file() -> None:
     print("\n--- test_expired_entry_pruned_from_file ---")
     db = _tmp_db()
@@ -177,12 +189,12 @@ def test_expired_entry_pruned_from_file() -> None:
     check("expired entry removed from persisted file", "https://youtu.be/a" not in data, str(data))
 
 
-def test_entry_missing_timestamp_treated_as_expired() -> None:
-    print("\n--- test_entry_missing_timestamp_treated_as_expired ---")
+def test_entry_missing_timestamp_treated_as_invalid() -> None:
+    print("\n--- test_entry_missing_timestamp_treated_as_invalid ---")
     db = _tmp_db()
     db.parent.mkdir(parents=True, exist_ok=True)
     db.write_text(json.dumps({"https://youtu.be/a": {"title": "no timestamp"}}))
-    check("treated as unknown/expired", not reg.is_known("https://youtu.be/a", db))
+    check("treated as unknown/invalid", not reg.is_known("https://youtu.be/a", db))
 
 
 def test_corrupt_db_file_treated_as_empty() -> None:
@@ -215,8 +227,9 @@ if __name__ == "__main__":
     test_forget_url_not_in_db_missing_file()
     test_forget_url_present()
     test_expired_entry_treated_as_new()
+    test_default_retains_old_entry()
     test_expired_entry_pruned_from_file()
-    test_entry_missing_timestamp_treated_as_expired()
+    test_entry_missing_timestamp_treated_as_invalid()
     test_corrupt_db_file_treated_as_empty()
     test_record_overwrites_existing_metadata()
 

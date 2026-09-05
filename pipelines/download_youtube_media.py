@@ -27,7 +27,8 @@ streams. See .agent/decisions/download-media-container-format.md.
 
 Config (pipelines/download_youtube_media.yaml):
     verbose            — print progress (default: true)
-    max_age_days       — registry entry lifetime in days (default: 60)
+    max_age_days       — registry entry lifetime in days (default: infinite;
+                         set a number to expire entries)
     stages.download    — options for stages.download_youtube_media
                          (resolution, video_codec, language)
     video_ext          — output extension for media_type="video" (default: ".mkv")
@@ -92,7 +93,7 @@ def run(
     cfg = load_config(_DEFAULT_CONFIG, config_path, options)
     verbose: bool = cfg.get("verbose", True)
     propagate_verbose(cfg)
-    max_age_days = cfg.get("max_age_days", 60)
+    max_age_days = cfg.get("max_age_days", None)
     download_opts = dict(cfg.get("stages", {}).get("download", {}))
     ext = cfg.get("video_ext", ".mkv") if media_type == "video" else cfg.get("audio_ext", ".mka")
 

@@ -1,7 +1,8 @@
 verbose: true
 
 # Registry entries older than this are treated as expired (re-download allowed).
-max_age_days: 60
+# null keeps registry entries indefinitely.
+max_age_days: null
 
 # Output container per media_type. Both accept arbitrary codecs via stream
 # copy (no forced re-encode) — see .agent/decisions/download-media-container-format.md

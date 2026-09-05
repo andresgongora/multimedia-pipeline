@@ -5,9 +5,10 @@ database keyed by URL), which stage contracts explicitly forbid ("no shared
 mutable state"). Pipelines own the database file path and lifecycle — pass
 it in explicitly, same as ``output_dir``/``config_path``.
 
-Self-cleaning: entries older than ``max_age_days`` are dropped whenever the
-registry is read (via :func:`filter_new`). There is no separate prune
-schedule — pruning happens lazily on read.
+Self-cleaning: when ``max_age_days`` is set, entries older than that duration
+are dropped whenever the registry is read (via :func:`filter_new`). There is no
+separate prune schedule — pruning happens lazily on read. The default is
+infinite retention.
 
 Storage format (JSON):
     {
@@ -19,7 +20,7 @@ Typical pipeline usage:
     from shared import download_registry as registry
 
     urls = fetch_youtube_playlist.run(playlist_url)["video_urls"]
-    new_urls = registry.filter_new(urls, db_path, max_age_days=60)
+    new_urls = registry.filter_new(urls, db_path)
 
     for url in new_urls:
         download_youtube_media.run(url, output_path)
@@ -35,7 +36,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-DEFAULT_MAX_AGE_DAYS = 60
+DEFAULT_MAX_AGE_DAYS: float | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -64,13 +65,17 @@ def _save(db_path: Path | str, entries: dict[str, dict]) -> None:
         json.dump(entries, f, indent=2, sort_keys=True)
 
 
-def _prune(entries: dict[str, dict], max_age_days: float) -> dict[str, dict]:
-    """Return a new dict with entries older than *max_age_days* removed.
+def _prune(entries: dict[str, dict], max_age_days: float | None) -> dict[str, dict]:
+    """Return entries newer than *max_age_days*, or all valid entries if unset.
 
     Entries with a missing or unparsable ``downloaded_at`` are dropped
-    (treated as expired) rather than kept indefinitely.
+    (treated as invalid) rather than kept.
     """
-    cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(days=max_age_days)
+        if max_age_days is not None
+        else None
+    )
     kept: dict[str, dict] = {}
     for url, meta in entries.items():
         raw = meta.get("downloaded_at") if isinstance(meta, dict) else None
@@ -78,7 +83,7 @@ def _prune(entries: dict[str, dict], max_age_days: float) -> dict[str, dict]:
             downloaded_at = datetime.fromisoformat(raw) if raw else None
         except ValueError:
             downloaded_at = None
-        if downloaded_at is not None and downloaded_at >= cutoff:
+        if downloaded_at is not None and (cutoff is None or downloaded_at >= cutoff):
             kept[url] = meta
     return kept
 
@@ -92,13 +97,14 @@ def filter_new(
     urls: list[str],
     db_path: Path | str,
     *,
-    max_age_days: float = DEFAULT_MAX_AGE_DAYS,
+    max_age_days: float | None = DEFAULT_MAX_AGE_DAYS,
 ) -> list[str]:
     """Return the subset of *urls* not present in the (pruned) registry.
 
-    Prunes expired entries and persists the pruned registry as a side
-    effect, so the database self-cleans on every filter call. Order of
-    *urls* is preserved.
+    Prunes expired entries when *max_age_days* is set and persists the pruned
+    registry as a side effect, so the database self-cleans on every filter
+    call. With the default unset duration, valid entries never expire. Order
+    of *urls* is preserved.
     """
     entries = _prune(_load(db_path), max_age_days)
     _save(db_path, entries)
@@ -128,8 +134,13 @@ def record_many(urls: dict[str, dict | None], db_path: Path | str) -> None:
     _save(db_path, entries)
 
 
-def is_known(url: str, db_path: Path | str, *, max_age_days: float = DEFAULT_MAX_AGE_DAYS) -> bool:
-    """Return True if *url* has a non-expired entry in the registry."""
+def is_known(
+    url: str,
+    db_path: Path | str,
+    *,
+    max_age_days: float | None = DEFAULT_MAX_AGE_DAYS,
+) -> bool:
+    """Return True if *url* has a valid, optionally non-expired registry entry."""
     entries = _prune(_load(db_path), max_age_days)
     return url in entries
 
