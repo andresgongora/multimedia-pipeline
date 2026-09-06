@@ -14,6 +14,10 @@ Two strategies, tried in order:
 
 If neither strategy produces a useful name, returns the original stem unchanged.
 
+With ``filename_only`` enabled, metadata is ignored and only the existing
+filename is scrubbed. This preserves source naming such as ``Artist - Track``
+when embedded artist metadata is actually a YouTube channel name.
+
 Format string placeholders (strategy 1):
   {title}   — "title" tag
   {artist}  — "artist" tag (falls back to "album_artist")
@@ -29,12 +33,13 @@ Inputs:
 
 Options:
     format  — format string for metadata strategy (default: "{artist} - {title}")
+    filename_only — ignore metadata and scrub the existing filename (default: False)
     verbose — print progress (default: True)
 
 Returns:
     {
       "suggested_name": "Artist - Title",   # stem only, no extension
-      "strategy":       "metadata" | "scrub" | "none",
+      "strategy":       "metadata" | "scrub" | "filename" | "none",
     }
 
 Example usage:
@@ -64,6 +69,7 @@ _STAGE = "suggest_name"
 
 DEFAULTS: dict = {
     "format": "{artist} - {title}",
+    "filename_only": False,
     "verbose": True,
 }
 
@@ -73,7 +79,12 @@ DEFAULTS: dict = {
 
 _RULES: list[tuple[str, str]] = [
     (r"^(?:\.~[^~/\\]+~)+", ""),  # this repo's ".~stage~" pipeline temp-file prefix
+    (r"\s*\[[A-Za-z0-9_-]{11}\]\s*$", ""),  # trailing YouTube video ID
     (r"[^\x20-\x7E\u00A0-\uFFFF]", ""),
+    (
+        r"\s*[\[(](?i:official visualizer|high definition video|official music video)[\])]",
+        "",
+    ),
     (r"\([^)]*(?:kbps|fps|AAC|kbit|AV1|VP9|HEVC|x264|x265|H\.?264|H\.?265)[^)]*\)", ""),
     (r"\(\s*[\dA-Za-z]+[_\-][\w\-]*\s*\)", ""),
     (r"\b(?:4320|2160|1440|1080|720|480|360|240)p\b", ""),
@@ -100,23 +111,28 @@ def run(input_path: str, *, options: dict | None = None) -> dict:
     opts = {**DEFAULTS, **(options or {})}
     verbose: bool = opts["verbose"]
     fmt: str = opts["format"]
+    filename_only: bool = opts["filename_only"]
 
     src = Path(input_path)
 
     if verbose:
         stage_header(_STAGE, src)
 
-    with stage_timer(_STAGE, "read metadata"):
-        tags = _read_tags(src)
-
-    # Strategy 1: metadata
-    name = _from_metadata(tags, fmt)
-    strategy = "metadata"
-
-    # Strategy 2: scrub filename
-    if not name:
+    if filename_only:
         name = _scrub(src.stem)
-        strategy = "scrub"
+        strategy = "filename"
+    else:
+        with stage_timer(_STAGE, "read metadata"):
+            tags = _read_tags(src)
+
+        # Strategy 1: metadata
+        name = _from_metadata(tags, fmt)
+        strategy = "metadata"
+
+        # Strategy 2: scrub filename
+        if not name:
+            name = _scrub(src.stem)
+            strategy = "scrub"
 
     # Fallback: original stem
     if not name:

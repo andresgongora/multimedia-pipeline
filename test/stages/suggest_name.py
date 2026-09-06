@@ -6,16 +6,16 @@ Usage:
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT))
 
-from stages.suggest_name import run, _scrub, _from_metadata
+from stages.suggest_name import _from_metadata, _scrub, run  # noqa: E402
 
 SAMPLE = ROOT / "test" / "sample" / "Wearing the Wrong Hat in the 1920’s Tales From the Bottle.m4a"
 UNTAGGED_YOUTUBE_SAMPLE = (
@@ -70,6 +70,31 @@ def test_scrub_temp_prefix() -> None:
     check("title preserved", result == "My Podcast Episode", repr(result))
 
 
+def test_scrub_music_filename_noise() -> None:
+    print("\n--- test_scrub_music_filename_noise ---")
+    cases = {
+        "Artist - Track (Official Visualizer) [dQw4w9WgXcQ]": "Artist - Track",
+        "Artist - Track (High Definition Video) [dQw4w9WgXcQ]": "Artist - Track",
+        "Artist - Track [Official Music Video] [dQw4w9WgXcQ]": "Artist - Track",
+        "Artist - Track (feat. Guest) [dQw4w9WgXcQ]": "Artist - Track (feat. Guest)",
+    }
+    for source, expected in cases.items():
+        result = _scrub(source)
+        check(source, result == expected, repr(result))
+
+
+def test_filename_only_ignores_metadata() -> None:
+    print("\n--- test_filename_only_ignores_metadata ---")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        source = Path(tmpdir) / "Artist - Track [dQw4w9WgXcQ].mka"
+        source.write_text("not media")
+        with patch("stages.suggest_name._read_tags", side_effect=AssertionError("metadata read")):
+            result = run(str(source), options={"verbose": False, "filename_only": True})
+
+    check("uses filename strategy", result["strategy"] == "filename", repr(result))
+    check("preserves artist and title", result["suggested_name"] == "Artist - Track", repr(result))
+
+
 def test_from_metadata_format() -> None:
     print("\n--- test_from_metadata_format ---")
     tags = {"title": "Never Gonna Give You Up", "artist": "Rick Astley"}
@@ -106,7 +131,7 @@ def test_suggest_from_sample_file() -> None:
 
     result = run(str(SAMPLE), options={"verbose": False})
     check("has suggested_name", bool(result.get("suggested_name")))
-    check("has strategy", result.get("strategy") in ("metadata", "scrub", "none"))
+    check("has strategy", result.get("strategy") in ("metadata", "scrub", "filename", "none"))
     print(f"  INFO  suggested: {result['suggested_name']!r} (strategy={result['strategy']})")
 
 
@@ -257,6 +282,8 @@ if __name__ == "__main__":
     test_scrub_resolution()
     test_scrub_underscores()
     test_scrub_temp_prefix()
+    test_scrub_music_filename_noise()
+    test_filename_only_ignores_metadata()
     test_from_metadata_format()
     test_from_metadata_missing_artist()
     test_from_metadata_empty_tags()

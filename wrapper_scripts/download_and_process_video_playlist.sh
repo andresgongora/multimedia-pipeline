@@ -1,90 +1,147 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+IFS=$'\n\t'
 
-# ---------------------------------------------------------------------------
-# download_and_process_video_playlist.sh
-#
-# Meant to be symlinked into a video folder, e.g.:
-#   ln -s ~/Software/multimedia-pipeline/wrapper_scripts/download_and_process_video_playlist.sh \
-#         ~/Videos/YouTube/download_and_process_video_playlist.sh
-#
-# One-call replacement for the download_video_playlist.sh +
-# process_youtube_inbox.sh pair: downloads every new video from a fixed
-# playlist URL and scrubs it (SponsorBlock cuts, metadata) in a single
-# pipeline call (pipelines/download_youtube_playlist.py), instead of
-# downloading into Inbox/ and separately processing it later.
-#
-# Layout expected in the symlink's parent folder:
-#   <video-folder>/
-#     .youtube_playlist         ← file containing the playlist URL (first line)
-#     Inbox/                    ← disposable download work dir (wiped every run)
-#     YYYY.Www/                  ← scrubbed output (created automatically per ISO week)
-#     .download_registry.json   ← dedup DB (created automatically)
-#
-# Inbox/ here is *not* a drop-and-process-later folder like in the
-# process_youtube_inbox.sh workflow — it is an explicit work_dir passed to
-# download_youtube_playlist, which owns it fully: created at the start of
-# each run, removed at the end (see the pipeline's docstring). A file that
-# downloads fine but fails scrubbing is rescued (moved raw) into the dated
-# output folder instead of being lost with Inbox/.
-#
-# Caution if Inbox/ is shared with a separate process_youtube_inbox.sh
-# workflow: this script does not distinguish manually-dropped files from
-# its own downloads — anything sitting in Inbox/ when this script runs gets
-# swept into the same scrub-and-wipe cycle.
-# ---------------------------------------------------------------------------
+##==================================================================================================
+## DEPENDENCY CHECKS
+##==================================================================================================
 
-# SCRIPT_DIR = the folder where the symlink lives (the video folder).
-# Resolving via $0 (not readlink) is intentional: we want the symlink's
-# parent, not the script's source parent.
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+requireCommand() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        printf 'Required command not found: %s\n' "$1" >&2
+        exit 1
+    fi
+}
 
+requireCommand date
+requireCommand jq
+requireCommand mkdir
+requireCommand readlink
+requireCommand trash
+requireCommand uv
+
+##==================================================================================================
+## GLOBALS
+##==================================================================================================
+
+## Symlink the script into a video folder. The symlink parent owns all state.
+
+case "$0" in
+    */*) declare -r SCRIPT_PARENT="${0%/*}" ;;
+    *) declare -r SCRIPT_PARENT="." ;;
+esac
+
+SCRIPT_DIR="$(cd "$SCRIPT_PARENT" && pwd)"
+declare -r SCRIPT_DIR
 PLAYLIST_FILE="$SCRIPT_DIR/.youtube_playlist"
-if [[ ! -f "$PLAYLIST_FILE" ]]; then
-    echo "Missing playlist file: $PLAYLIST_FILE (create it with the playlist URL as its first line)" >&2
-    exit 1
-fi
-PLAYLIST_URL="$(head -n 1 "$PLAYLIST_FILE" | tr -d '[:space:]')"
-if [[ -z "$PLAYLIST_URL" ]]; then
-    echo "Playlist file is empty: $PLAYLIST_FILE" >&2
-    exit 1
-fi
-
+declare -r PLAYLIST_FILE
 WORK_DIR="$SCRIPT_DIR/Inbox"
-OUTDIR="$SCRIPT_DIR/$(date +%G.W%V)"
+declare -r WORK_DIR
+OUTPUT_DIR="$SCRIPT_DIR/$(date +%G.W%V)"
+declare -r OUTPUT_DIR
 DB_PATH="$SCRIPT_DIR/.download_registry.json"
+declare -r DB_PATH
+MEDIA_TYPE="video"
+declare -r MEDIA_TYPE
 
-mkdir -p "$OUTDIR"
+##==================================================================================================
+## UTILITIES
+##==================================================================================================
 
-# Resolve the real location of this script (following the symlink) so we can
-# cd into the project root and run uv from there, regardless of where the
-# symlink lives.
-REAL_SCRIPT="$(readlink -f "$0")"
-PROJECT_DIR="$(cd "$(dirname "$REAL_SCRIPT")/.." && pwd)"
-cd "$PROJECT_DIR"
-
-# ---------------------------------------------------------------------------
-# Download + scrub in one call (verbose off so stdout is clean JSON — the
-# pipeline logs its own progress to the terminal when run interactively
-# without --options).
-# ---------------------------------------------------------------------------
-
-result_json="$(uv run -m pipelines.download_youtube_playlist \
-    "$PLAYLIST_URL" "$OUTDIR" video \
-    --work-dir "$WORK_DIR" --db "$DB_PATH" --force \
-    --options '{"verbose": false}')"
-
-downloaded="$(jq '.downloaded' <<<"$result_json")"
-processed="$(jq '.processed' <<<"$result_json")"
-skipped="$(jq '.skipped' <<<"$result_json")"
-failed="$(jq '.failed' <<<"$result_json")"
-echo "$downloaded downloaded, $processed processed, $skipped skipped, $failed failed"
-
-# ---------------------------------------------------------------------------
-# Exit status
-# ---------------------------------------------------------------------------
-
-if [[ "$failed" -gt 0 ]]; then
-    echo "$failed failure(s) — check $OUTDIR for rescued raw (unscrubbed) files" >&2
+die() {
+    printf '%s\n' "$1" >&2
     exit 1
-fi
+}
+
+##==================================================================================================
+## CORE FUNCTIONS
+##==================================================================================================
+
+readPlaylistUrl() {
+    local playlist_file="$1"
+    local playlist_url
+
+    [[ -f "$playlist_file" ]] || die "Missing playlist file: $playlist_file"
+    IFS= read -r playlist_url < "$playlist_file" || true
+    playlist_url="${playlist_url//[[:space:]]/}"
+    [[ -n "$playlist_url" ]] || die "Playlist file is empty: $playlist_file"
+    printf '%s' "$playlist_url"
+}
+
+processPlaylist() {
+    local playlist_url="$1"
+    local output_dir="$2"
+    local work_dir="$3"
+    local db_path="$4"
+    local media_type="$5"
+    local result_json
+    local downloaded
+    local processed
+    local skipped
+    local failed
+
+    mkdir -p "$output_dir"
+    result_json="$(uv run -m pipelines.download_youtube_playlist \
+        "$playlist_url" "$output_dir" "$media_type" \
+        --work-dir "$work_dir" \
+        --db "$db_path" \
+        --force \
+        --options '{"verbose": false}')"
+
+    downloaded="$(jq '.downloaded' <<<"$result_json")"
+    processed="$(jq '.processed' <<<"$result_json")"
+    skipped="$(jq '.skipped' <<<"$result_json")"
+    failed="$(jq '.failed' <<<"$result_json")"
+    printf '%s downloaded, %s processed, %s skipped, %s failed\n' \
+        "$downloaded" "$processed" "$skipped" "$failed"
+
+    if [[ "$failed" -gt 0 ]]; then
+        die "$failed failure(s) — check $output_dir for rescued raw files"
+    fi
+}
+
+cleanupTempFiles() {
+    local command_status=$?
+    local cleanup_status=0
+    local temp_file
+    local -a temp_files=()
+
+    shopt -s globstar nullglob dotglob
+    temp_files=("$SCRIPT_DIR"/**/.~*)
+    for temp_file in "${temp_files[@]}"; do
+        [[ -f "$temp_file" ]] || continue
+        if ! trash "$temp_file"; then
+            printf 'Failed to remove temporary file: %s\n' "$temp_file" >&2
+            cleanup_status=1
+        fi
+    done
+
+    if ((command_status != 0)); then
+        return "$command_status"
+    fi
+    return "$cleanup_status"
+}
+
+trap cleanupTempFiles EXIT
+
+##==================================================================================================
+## MAIN
+##==================================================================================================
+
+main() {
+    local playlist_url
+    local real_script
+    local project_dir
+
+    playlist_url="$(readPlaylistUrl "$PLAYLIST_FILE")"
+    real_script="$(readlink -f "$0")"
+    project_dir="$(cd "${real_script%/*}/.." && pwd)"
+    cd "$project_dir"
+    processPlaylist "$playlist_url" "$OUTPUT_DIR" "$WORK_DIR" "$DB_PATH" "$MEDIA_TYPE"
+}
+
+##==================================================================================================
+## SCRIPT ENTRY POINT
+##==================================================================================================
+
+main

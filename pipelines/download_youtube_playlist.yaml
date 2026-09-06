@@ -21,3 +21,6 @@ scrub_podcast: {}
 scrub_music:
   pipeline:
     name_only: true
+    stages:
+      suggest_name:
+        filename_only: true

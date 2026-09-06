@@ -184,6 +184,12 @@ def test_music_downloads_audio_and_only_scrubs_names() -> None:
             captured["scrub_options"]["pipeline"].get("name_only") is True,
             str(captured),
         )
+        check(
+            "filename-only naming enabled",
+            captured["scrub_options"]["pipeline"]["stages"]["suggest_name"]["filename_only"]
+            is True,
+            str(captured),
+        )
         check("1 processed", result["processed"] == 1, str(result))
         check(
             "podcast batch not called",
