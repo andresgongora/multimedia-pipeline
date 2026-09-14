@@ -12,9 +12,9 @@ Given a playlist URL:
        - media_type="video" → pipelines.batch_scrub_youtube_media
        - media_type="audio" → pipelines.batch_scrub_youtube_podcast
        - media_type="music" → pipelines.batch_scrub_youtube_media in name-only mode
- 3. A file that downloaded fine but failed scrubbing is moved, unscrubbed,
-      into output_dir as-is (never silently lost) instead of staying stuck
-      in the work directory.
+  3. A file that downloaded fine but failed scrubbing is moved, unscrubbed,
+     into output_dir with a cleaned fallback name (never silently lost)
+     instead of staying stuck in the work directory.
       A file whose scrub was skipped is not rescued; it is discarded with the
       work directory because its already-scrubbed output exists in output_dir.
   4. The work directory (hidden default or explicit work_dir) is removed
@@ -46,12 +46,14 @@ Config (pipelines/download_youtube_playlist.yaml):
 
 from __future__ import annotations
 
+import re
 import shutil
 from pathlib import Path
 
 import pipelines.batch_scrub_youtube_media as batch_scrub_youtube_media
 import pipelines.batch_scrub_youtube_podcast as batch_scrub_youtube_podcast
 import pipelines.download_youtube_media as download_youtube_media
+import stages.suggest_name as suggest_name
 from shared.config import load_config
 from shared.output import pipeline_log
 
@@ -59,6 +61,7 @@ _PIPELINE = "download_youtube_playlist"
 _DEFAULT_CONFIG = Path(__file__).with_suffix(".yaml")
 
 _WORK_DIR_NAME = ".~download_youtube_playlist~work"
+_YOUTUBE_ID_SUFFIX_RE = re.compile(r"\s*\[[A-Za-z0-9_-]{11}\]\s*$")
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +72,8 @@ _WORK_DIR_NAME = ".~download_youtube_playlist~work"
 def _rescue_unscrubbed(work_dir: Path, out_dir: Path, scrub_results: list[dict]) -> None:
     """Move any failed-scrub download from work_dir into out_dir, unscrubbed.
 
-    Never overwrites an existing file: falls back to a disambiguated name.
+    Retains raw media contents and never overwrites an existing file: falls
+    back to a disambiguated name.
     """
     for entry in scrub_results:
         if entry.get("status") != "failed":
@@ -77,12 +81,18 @@ def _rescue_unscrubbed(work_dir: Path, out_dir: Path, scrub_results: list[dict])
         src = Path(entry["input_path"])
         if not src.exists():
             continue
-        dest = out_dir / src.name
+        try:
+            suggested_name = suggest_name.run(
+                str(src), options={"filename_only": True, "verbose": False}
+            )["suggested_name"]
+        except Exception:
+            suggested_name = _YOUTUBE_ID_SUFFIX_RE.sub("", src.stem).strip() or src.stem
+        dest = out_dir / f"{suggested_name}{src.suffix}"
         if dest.exists():
             counter = 1
             while True:
                 suffix = "" if counter == 1 else f".{counter}"
-                dest = out_dir / f"{src.stem}.download{suffix}{src.suffix}"
+                dest = out_dir / f"{suggested_name}.download{suffix}{src.suffix}"
                 if not dest.exists():
                     break
                 counter += 1

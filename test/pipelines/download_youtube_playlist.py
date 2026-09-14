@@ -203,7 +203,7 @@ def test_scrub_failure_rescues_raw_download() -> None:
     print("\n--- test_scrub_failure_rescues_raw_download ---")
 
     def fake_download(_url: str, output_dir: str, _media_type: str, **_kwargs) -> dict:
-        path = Path(output_dir) / "raw.mkv"
+        path = Path(output_dir) / "Raw title [aaaaaaaaaaa].mkv"
         path.write_text("downloaded")
         return {
             "downloaded": 1,
@@ -218,7 +218,7 @@ def test_scrub_failure_rescues_raw_download() -> None:
             "failed": 1,
             "results": [
                 {
-                    "input_path": str(Path(input_dir) / "raw.mkv"),
+                    "input_path": str(Path(input_dir) / "Raw title [aaaaaaaaaaa].mkv"),
                     "status": "failed",
                     "output_path": None,
                 }
@@ -233,7 +233,11 @@ def test_scrub_failure_rescues_raw_download() -> None:
         ):
             pipeline.run("https://playlist", str(out_dir), "video", options={"verbose": False})
 
-        check("raw file rescued", (out_dir / "raw.mkv").exists())
+        check(
+            "rescued filename removes video ID",
+            (out_dir / "Raw title.mkv").exists()
+            and not (out_dir / "Raw title [aaaaaaaaaaa].mkv").exists(),
+        )
         check("work dir removed", not (out_dir / ".~download_youtube_playlist~work").exists())
 
 
