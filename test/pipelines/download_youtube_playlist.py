@@ -230,6 +230,7 @@ def test_scrub_failure_rescues_raw_download() -> None:
         with (
             patch.object(pipeline.download_youtube_media, "run", fake_download),
             patch.object(pipeline.batch_scrub_youtube_media, "run", fake_scrub),
+            patch.object(pipeline.identify_youtube_media, "run", side_effect=RuntimeError),
         ):
             pipeline.run("https://playlist", str(out_dir), "video", options={"verbose": False})
 
@@ -239,6 +240,55 @@ def test_scrub_failure_rescues_raw_download() -> None:
             and not (out_dir / "Raw title [aaaaaaaaaaa].mkv").exists(),
         )
         check("work dir removed", not (out_dir / ".~download_youtube_playlist~work").exists())
+
+
+def test_scrub_failure_uses_identified_metadata_for_rescue_name() -> None:
+    print("\n--- test_scrub_failure_uses_identified_metadata_for_rescue_name ---")
+
+    def fake_download(_url: str, output_dir: str, _media_type: str, **_kwargs) -> dict:
+        path = Path(output_dir) / "Raw title [aaaaaaaaaaa].mkv"
+        path.write_text("downloaded")
+        return {
+            "downloaded": 1,
+            "failed": 0,
+            "results": [{"url": _URLS[0], "status": "downloaded", "output_path": str(path)}],
+        }
+
+    def fake_scrub(input_dir: str, _output_dir: str, **_kwargs) -> dict:
+        return {
+            "processed": 0,
+            "skipped": 0,
+            "failed": 1,
+            "results": [
+                {
+                    "input_path": str(Path(input_dir) / "Raw title [aaaaaaaaaaa].mkv"),
+                    "status": "failed",
+                    "output_path": None,
+                }
+            ],
+        }
+
+    with tempfile.TemporaryDirectory() as d:
+        out_dir = Path(d) / "out"
+        with (
+            patch.object(pipeline.download_youtube_media, "run", fake_download),
+            patch.object(pipeline.batch_scrub_youtube_media, "run", fake_scrub),
+            patch.object(
+                pipeline.identify_youtube_media,
+                "run",
+                return_value={
+                    "identified": True,
+                    "channel": "Channel:/Name",
+                    "title": "Recovered title",
+                },
+            ),
+        ):
+            pipeline.run("https://playlist", str(out_dir), "video", options={"verbose": False})
+
+        check(
+            "rescued filename uses channel and title",
+            (out_dir / "Channel Name - Recovered title.mkv").exists(),
+        )
 
 
 def test_explicit_work_dir_used_and_removed() -> None:
@@ -326,6 +376,7 @@ if __name__ == "__main__":
     test_audio_routes_to_podcast_batch()
     test_music_downloads_audio_and_only_scrubs_names()
     test_scrub_failure_rescues_raw_download()
+    test_scrub_failure_uses_identified_metadata_for_rescue_name()
     test_explicit_work_dir_used_and_removed()
     test_download_db_path_forwarded()
 

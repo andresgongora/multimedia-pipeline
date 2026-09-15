@@ -53,8 +53,10 @@ from pathlib import Path
 import pipelines.batch_scrub_youtube_media as batch_scrub_youtube_media
 import pipelines.batch_scrub_youtube_podcast as batch_scrub_youtube_podcast
 import pipelines.download_youtube_media as download_youtube_media
+import stages.identify_youtube_media as identify_youtube_media
 import stages.suggest_name as suggest_name
 from shared.config import load_config
+from shared.io import sanitize_filename
 from shared.output import pipeline_log
 
 _PIPELINE = "download_youtube_playlist"
@@ -81,12 +83,26 @@ def _rescue_unscrubbed(work_dir: Path, out_dir: Path, scrub_results: list[dict])
         src = Path(entry["input_path"])
         if not src.exists():
             continue
+        suggested_name = None
         try:
-            suggested_name = suggest_name.run(
-                str(src), options={"filename_only": True, "verbose": False}
-            )["suggested_name"]
+            identification = identify_youtube_media.run(str(src), options={"verbose": False})
+            if identification.get("identified"):
+                metadata = []
+                for field in ("channel", "title"):
+                    value = identification.get(field)
+                    if isinstance(value, str) and value.strip():
+                        metadata.append(value.strip())
+                if metadata:
+                    suggested_name = sanitize_filename(" - ".join(metadata))
         except Exception:
-            suggested_name = _YOUTUBE_ID_SUFFIX_RE.sub("", src.stem).strip() or src.stem
+            pass
+        if not suggested_name:
+            try:
+                suggested_name = suggest_name.run(
+                    str(src), options={"filename_only": True, "verbose": False}
+                )["suggested_name"]
+            except Exception:
+                suggested_name = _YOUTUBE_ID_SUFFIX_RE.sub("", src.stem).strip() or src.stem
         dest = out_dir / f"{suggested_name}{src.suffix}"
         if dest.exists():
             counter = 1
