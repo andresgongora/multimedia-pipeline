@@ -81,6 +81,16 @@ uv run multimedia-pipeline scrub-youtube-podcast podcast.opus
 uv run multimedia-pipeline scrub-youtube-podcast /path/to/downloads/ -o /path/to/output/
 ```
 
+**`sort-media`** — move media into configured folders using artist and keyword rules
+
+```bash
+uv run multimedia-pipeline sort-media /path/to/input --config /path/to/sort.yaml
+uv run multimedia-pipeline sort-media /path/to/input --config /path/to/sort.yaml --output /path/to/library
+```
+
+Output defaults to the parent of the input directory. The YAML file maps destination
+folders to `authors` and `keywords`; author matches take precedence.
+
 <!------------------------------------------------------------------------------------------------->
 ## Architecture
 <!------------------------------------------------------------------------------------------------->
@@ -93,7 +103,7 @@ User → CLI → Pipeline → Stage₁ → Stage₂ → ... → Output
 
 | Layer        | Owns                                                      |
 | ------------ | --------------------------------------------------------- |
-| **CLI**      | Arg parsing, dir expansion, per-file dispatch, exit codes |
+| **CLI**      | Arg parsing, file/dir expansion, pipeline dispatch, exit codes |
 | **Pipeline** | Stage orchestration, config loading, temp file lifecycle  |
 | **Stage**    | Single processing operation, self-contained logic         |
 | **Shared**   | Cross-cutting utilities (logging, probing, config)        |
@@ -110,12 +120,25 @@ options`. Each layer deep-merges onto previous.
 <!------------------------------------------------------------------------------------------------->
 
 ```text
-stages/          reusable processing stages (atomic or composite)
-pipelines/       top-level entry points that wire stages together
-shared/          output/logging helpers
-wrapper_scripts/ personal convenience scripts (not general-purpose)
-test/            test scripts; sample and output files are gitignored
+multimedia_pipeline/  CLI package: commands, argument parsing, and dispatch
+pipelines/             user-facing workflows, orchestration, and YAML defaults
+  *.py                 file and batch pipeline implementations
+  *.yaml               pipeline-level configuration
+stages/                reusable media operations (atomic or composite)
+  <stage>/             composite stage with run.py and optional tools/
+shared/                cross-cutting helpers: config, I/O, probing, logging, batching
+test/                  stage, pipeline, and shared test scripts
+  sample/              manually curated input media (gitignored)
+  output/              generated comparison output (gitignored)
+wrapper_scripts/       personal shell automation, not general-purpose interfaces
+.agent/                architecture, interface contracts, decisions, bugs, and repo state
 ```
+
+Responsibility flows from **CLI → pipeline → stage → output**. Pipelines choose and
+sequence operations, manage configuration, temporary files, and output naming.
+Stages perform one reusable media operation and do not own multi-file orchestration
+or pipeline configuration. `shared/` contains generic infrastructure rather than
+domain workflows; wrapper scripts call pipelines for recurring personal workflows.
 
 <!------------------------------------------------------------------------------------------------->
 ## Development
