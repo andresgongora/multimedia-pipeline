@@ -379,6 +379,14 @@ def download_youtube_playlist_cmd(
 
 BatchInputDirArg = Annotated[Path, typer.Argument(help="Directory of files to process.")]
 BatchOutputDirArg = Annotated[Path, typer.Argument(help="Directory to write results into.")]
+SortConfigOpt = Annotated[
+    Path,
+    typer.Option("-c", "--config", help="YAML sorting rules."),
+]
+SortOutputDirOpt = Annotated[
+    Path | None,
+    typer.Option("-o", "--output", help="Destination root (default: input directory parent)."),
+]
 
 
 def _run_batch_pipeline(
@@ -462,6 +470,45 @@ def batch_scrub_youtube_podcast_cmd(
         quiet,
         options,
     )
+
+
+# ---------------------------------------------------------------------------
+# sort-media
+# ---------------------------------------------------------------------------
+
+
+@app.command(
+    name="sort-media",
+    help="Move media files into folders selected by YAML artist and keyword rules.",
+)
+def sort_media_cmd(
+    input_dir: BatchInputDirArg,
+    config: SortConfigOpt,
+    output_dir: SortOutputDirOpt = None,
+    force: ForceOpt = False,
+    quiet: QuietOpt = False,
+    options: OptionsOpt = None,
+) -> None:
+    import pipelines.sort_media as pipeline
+
+    opts: dict = json.loads(options) if options else {}
+    if quiet:
+        opts["verbose"] = False
+
+    try:
+        result = pipeline.run(
+            str(input_dir),
+            output_dir=str(output_dir) if output_dir else None,
+            force=force,
+            config_path=config,
+            options=opts,
+        )
+    except Exception as exc:
+        typer.echo(f"sort-media failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    if result["failed"]:
+        raise typer.Exit(1)
 
 
 # ---------------------------------------------------------------------------
