@@ -39,6 +39,8 @@ WORK_DIR="$SCRIPT_DIR/Inbox"
 declare -r WORK_DIR
 OUTPUT_DIR="$SCRIPT_DIR/$(date +%G.W%V)"
 declare -r OUTPUT_DIR
+SORT_CONFIG="$SCRIPT_DIR/.sort.yaml"
+declare -r SORT_CONFIG
 DB_PATH="$SCRIPT_DIR/.download_registry.json"
 declare -r DB_PATH
 MEDIA_TYPE="video"
@@ -100,6 +102,21 @@ processPlaylist() {
     fi
 }
 
+sortOutputIfConfigured() {
+    local output_dir="$1"
+    local output_root="$2"
+    local sort_config="$3"
+
+    if [[ ! -f "$sort_config" ]]; then
+        return 0
+    fi
+
+    uv run multimedia-pipeline sort-media \
+        "$output_dir" \
+        --config "$sort_config" \
+        --output "$output_root"
+}
+
 cleanupTempFiles() {
     local command_status=$?
     local cleanup_status=0
@@ -138,6 +155,7 @@ main() {
     project_dir="$(cd "${real_script%/*}/.." && pwd)"
     cd "$project_dir"
     processPlaylist "$playlist_url" "$OUTPUT_DIR" "$WORK_DIR" "$DB_PATH" "$MEDIA_TYPE"
+    sortOutputIfConfigured "$OUTPUT_DIR" "$SCRIPT_DIR" "$SORT_CONFIG"
 }
 
 ##==================================================================================================
