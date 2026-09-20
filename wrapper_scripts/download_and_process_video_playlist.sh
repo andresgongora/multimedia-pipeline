@@ -76,6 +76,8 @@ processPlaylist() {
     local work_dir="$3"
     local db_path="$4"
     local media_type="$5"
+    local output_root="$6"
+    local sort_config="$7"
     local result_json
     local downloaded
     local processed
@@ -96,6 +98,8 @@ processPlaylist() {
     failed="$(jq '.failed' <<<"$result_json")"
     printf '%s downloaded, %s processed, %s skipped, %s failed\n' \
         "$downloaded" "$processed" "$skipped" "$failed"
+
+    sortOutputIfConfigured "$output_dir" "$output_root" "$sort_config"
 
     if [[ "$failed" -gt 0 ]]; then
         die "$failed failure(s) — check $output_dir for rescued raw files"
@@ -154,8 +158,9 @@ main() {
     real_script="$(readlink -f "$0")"
     project_dir="$(cd "${real_script%/*}/.." && pwd)"
     cd "$project_dir"
-    processPlaylist "$playlist_url" "$OUTPUT_DIR" "$WORK_DIR" "$DB_PATH" "$MEDIA_TYPE"
-    sortOutputIfConfigured "$OUTPUT_DIR" "$SCRIPT_DIR" "$SORT_CONFIG"
+    processPlaylist \
+        "$playlist_url" "$OUTPUT_DIR" "$WORK_DIR" "$DB_PATH" "$MEDIA_TYPE" \
+        "$SCRIPT_DIR" "$SORT_CONFIG"
 }
 
 ##==================================================================================================
