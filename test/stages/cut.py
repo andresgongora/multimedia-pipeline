@@ -97,7 +97,7 @@ def test_precise_cut() -> None:
     check("passthrough not set", result.get("passthrough") is not True)
 
     # Output should be shorter than input
-    import subprocess, json as _json
+    import subprocess
 
     def dur(p: Path) -> float:
         r = subprocess.run(

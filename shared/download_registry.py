@@ -33,7 +33,7 @@ Typical pipeline usage:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 DEFAULT_MAX_AGE_DAYS: float | None = None
@@ -71,11 +71,7 @@ def _prune(entries: dict[str, dict], max_age_days: float | None) -> dict[str, di
     Entries with a missing or unparsable ``downloaded_at`` are dropped
     (treated as invalid) rather than kept.
     """
-    cutoff = (
-        datetime.now(timezone.utc) - timedelta(days=max_age_days)
-        if max_age_days is not None
-        else None
-    )
+    cutoff = datetime.now(UTC) - timedelta(days=max_age_days) if max_age_days is not None else None
     kept: dict[str, dict] = {}
     for url, meta in entries.items():
         raw = meta.get("downloaded_at") if isinstance(meta, dict) else None
@@ -128,7 +124,7 @@ def record_many(urls: dict[str, dict | None], db_path: Path | str) -> None:
         db_path: registry file path.
     """
     entries = _load(db_path)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     for url, metadata in urls.items():
         entries[url] = {"downloaded_at": now, **(metadata or {})}
     _save(db_path, entries)

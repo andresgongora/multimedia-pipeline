@@ -250,7 +250,9 @@ def run(input_path: str, output_path: str, *, options: dict | None = None) -> di
 
     tmp = dst.parent / (f".~{_STAGE}~" + dst.name)
     try:
-        af_chain = f"{speech_chain},{_build_loudnorm_filter(opts)},aresample=resampler=soxr:precision=28"
+        af_chain = (
+            f"{speech_chain},{_build_loudnorm_filter(opts)},aresample=resampler=soxr:precision=28"
+        )
         sample_rate = _probe_source_sample_rate(src)
 
         cmd = [

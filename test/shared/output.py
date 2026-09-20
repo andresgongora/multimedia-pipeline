@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from shared.output import _format_elapsed, _decorate_message, _path_name
+from shared.output import _decorate_message, _format_elapsed, _path_name
 
 passed = 0
 failed = 0

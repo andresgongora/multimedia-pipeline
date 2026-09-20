@@ -55,7 +55,9 @@ def test_processes_every_eligible_file() -> None:
 
         calls: list[str] = []
 
-        def fake_scrub(input_path: str, *, output_dir: str, force: bool, options: dict | None) -> dict:
+        def fake_scrub(
+            input_path: str, *, output_dir: str, force: bool, options: dict | None
+        ) -> dict:
             calls.append(input_path)
             out = str(Path(output_dir) / Path(input_path).name)
             return {"skipped": False, "output_path": out, "identified": False}
@@ -78,7 +80,9 @@ def test_one_failure_does_not_stop_batch() -> None:
         (in_dir / "ok.mp4").write_text("x")
         (in_dir / "bad.mp4").write_text("x")
 
-        def fake_scrub(input_path: str, *, output_dir: str, force: bool, options: dict | None) -> dict:
+        def fake_scrub(
+            input_path: str, *, output_dir: str, force: bool, options: dict | None
+        ) -> dict:
             if "bad" in input_path:
                 raise RuntimeError("simulated failure")
             return {"skipped": False, "output_path": input_path, "identified": False}
@@ -86,7 +90,9 @@ def test_one_failure_does_not_stop_batch() -> None:
         with patch.object(pipeline.scrub_youtube_media, "run", fake_scrub):
             result = pipeline.run(str(in_dir), str(out_dir), force=True, options={"verbose": False})
 
-        check("1 processed, 1 failed", result["processed"] == 1 and result["failed"] == 1, str(result))
+        check(
+            "1 processed, 1 failed", result["processed"] == 1 and result["failed"] == 1, str(result)
+        )
 
 
 if __name__ == "__main__":

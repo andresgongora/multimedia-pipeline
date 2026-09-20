@@ -37,10 +37,6 @@ from __future__ import annotations
 import warnings
 from pathlib import Path
 
-from shared.config import load_config, propagate_verbose
-from shared.ffprobe import get_duration
-from shared.io import safe_output_path
-from shared.output import pipeline_log, pipeline_timer
 import stages.add_metadata as add_metadata
 import stages.convert_to_wav as convert_to_wav
 import stages.cut as cut
@@ -50,6 +46,10 @@ import stages.identify_youtube_media as identify
 import stages.remove_silences as remove_silences
 import stages.scrub_metadata as scrub_metadata
 import stages.suggest_name as suggest_name
+from shared.config import load_config, propagate_verbose
+from shared.ffprobe import get_duration
+from shared.io import safe_output_path
+from shared.output import pipeline_log, pipeline_timer
 
 _PIPELINE = "scrub_youtube_podcast"
 _DEFAULT_CONFIG = Path(__file__).with_suffix(".yaml")
@@ -196,7 +196,9 @@ def run(
 
             # Podcast filter → M4A (final encode)
             temp_filtered_final = _temp("filter_final", ".m4a")
-            filter_podcast_audio.run(str(current), str(temp_filtered_final), options=filter_final_opts)
+            filter_podcast_audio.run(
+                str(current), str(temp_filtered_final), options=filter_final_opts
+            )
             current = temp_filtered_final
 
             # Scrub metadata

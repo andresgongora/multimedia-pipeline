@@ -189,7 +189,9 @@ def _transcode(src: Path, dst: Path, opts: dict, meta: dict) -> None:
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        raise RuntimeError(f"ffmpeg sanitize failed (exit {result.returncode}):\n{result.stderr.strip()}")
+        raise RuntimeError(
+            f"ffmpeg sanitize failed (exit {result.returncode}):\n{result.stderr.strip()}"
+        )
 
 
 def run(input_path: str, output_path: str, *, options: dict | None = None) -> dict:
@@ -231,7 +233,9 @@ def run(input_path: str, output_path: str, *, options: dict | None = None) -> di
         stage_log(
             _STAGE,
             "[yellow]warning[/] likely variable framerate "
-            f"(avg={_format_fps(meta['avg_fps'])} fps, nominal={_format_fps(meta['nominal_fps'])} fps)",
+            "(avg="
+            f"{_format_fps(meta['avg_fps'])} fps, "
+            f"nominal={_format_fps(meta['nominal_fps'])} fps)",
         )
 
     passthrough = not rotate and not fix_framerate

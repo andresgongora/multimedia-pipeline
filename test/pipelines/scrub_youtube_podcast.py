@@ -37,7 +37,9 @@ except FileNotFoundError:
     print("Missing input raises FileNotFoundError: PASS")
 
 try:
-    video_sample = ROOT / "test/sample/Wearing the Wrong Hat in the 1920\u2019s Tales From the Bottle.mp4"
+    video_sample = ROOT / (
+        "test/sample/Wearing the Wrong Hat in the 1920\u2019s Tales From the Bottle.mp4"
+    )
     if video_sample.exists():
         run(str(video_sample), options={"verbose": False})
         raise AssertionError("Expected ValueError for video input")

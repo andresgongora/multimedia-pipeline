@@ -12,7 +12,8 @@ import tempfile
 from pathlib import Path
 
 from shared.ffprobe import get_streams
-from stages.sanitize_video import _is_likely_variable_framerate, run as sanitize_video
+from stages.sanitize_video import _is_likely_variable_framerate
+from stages.sanitize_video import run as sanitize_video
 
 passed = 0
 failed = 0
@@ -172,8 +173,12 @@ def test_no_video_stream() -> None:
         audio = Path(tmp) / "audio.wav"
         dst = Path(tmp) / "out.mp4"
         cmd = [
-            "ffmpeg", "-y",
-            "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "sine=frequency=440:duration=1",
             str(audio),
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)

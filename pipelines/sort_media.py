@@ -207,9 +207,7 @@ def run(
     if not source_root.is_dir():
         raise NotADirectoryError(f"Input is not a directory: {source_root}")
 
-    destination_root = (
-        Path(output_dir).expanduser().resolve() if output_dir else source_root.parent
-    )
+    destination_root = Path(output_dir).expanduser().resolve() if output_dir else source_root.parent
     opts = options or {}
     verbose = bool(opts.get("verbose", True))
     rules = load_sort_rules(Path(config_path).expanduser().resolve(), destination_root)

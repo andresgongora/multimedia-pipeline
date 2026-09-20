@@ -33,9 +33,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pipelines.scrub_youtube_podcast as scrub_youtube_podcast
 from shared.batch import run_dir_batch
 from shared.config import load_config
-import pipelines.scrub_youtube_podcast as scrub_youtube_podcast
 
 _PIPELINE = "batch_scrub_youtube_podcast"
 _DEFAULT_CONFIG = Path(__file__).with_suffix(".yaml")

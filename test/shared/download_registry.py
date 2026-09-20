@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import sys
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -83,7 +83,9 @@ def test_filter_new_preserves_order() -> None:
     reg.record("https://youtu.be/b", db)
     urls = ["https://youtu.be/c", "https://youtu.be/a", "https://youtu.be/b"]
     new = reg.filter_new(urls, db)
-    check("order preserved, b dropped", new == ["https://youtu.be/c", "https://youtu.be/a"], str(new))
+    check(
+        "order preserved, b dropped", new == ["https://youtu.be/c", "https://youtu.be/a"], str(new)
+    )
 
 
 def test_record_many_single_load_save() -> None:
@@ -169,7 +171,7 @@ def test_expired_entry_treated_as_new() -> None:
 def test_default_retains_old_entry() -> None:
     print("\n--- test_default_retains_old_entry ---")
     db = _tmp_db()
-    old_ts = (datetime.now(timezone.utc) - timedelta(days=100)).isoformat()
+    old_ts = (datetime.now(UTC) - timedelta(days=100)).isoformat()
     db.parent.mkdir(parents=True, exist_ok=True)
     db.write_text(json.dumps({"https://youtu.be/a": {"downloaded_at": old_ts}}))
     new = reg.filter_new(["https://youtu.be/a"], db)
@@ -181,7 +183,7 @@ def test_default_retains_old_entry() -> None:
 def test_expired_entry_pruned_from_file() -> None:
     print("\n--- test_expired_entry_pruned_from_file ---")
     db = _tmp_db()
-    old_ts = (datetime.now(timezone.utc) - timedelta(days=100)).isoformat()
+    old_ts = (datetime.now(UTC) - timedelta(days=100)).isoformat()
     db.parent.mkdir(parents=True, exist_ok=True)
     db.write_text(json.dumps({"https://youtu.be/a": {"downloaded_at": old_ts}}))
     reg.filter_new(["https://youtu.be/a"], db, max_age_days=60)
@@ -203,7 +205,9 @@ def test_corrupt_db_file_treated_as_empty() -> None:
     db.parent.mkdir(parents=True, exist_ok=True)
     db.write_text("{not valid json")
     new = reg.filter_new(["https://youtu.be/a"], db)
-    check("corrupt file treated as empty registry, no crash", new == ["https://youtu.be/a"], str(new))
+    check(
+        "corrupt file treated as empty registry, no crash", new == ["https://youtu.be/a"], str(new)
+    )
 
 
 def test_record_overwrites_existing_metadata() -> None:

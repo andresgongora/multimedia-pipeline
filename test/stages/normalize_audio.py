@@ -10,8 +10,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from stages.normalize_audio import run
 from shared.ffprobe import get_streams
+from stages.normalize_audio import run
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -50,7 +50,11 @@ def test_basic_normalize(sample: Path):
     # Probe input sample rate before normalizing
     in_streams = get_streams(sample)
     in_sr = next(
-        (int(s["sample_rate"]) for s in in_streams if s.get("codec_type") == "audio" and s.get("sample_rate")),
+        (
+            int(s["sample_rate"])
+            for s in in_streams
+            if s.get("codec_type") == "audio" and s.get("sample_rate")
+        ),
         None,
     )
 
@@ -65,7 +69,11 @@ def test_basic_normalize(sample: Path):
     if in_sr:
         out_streams = get_streams(out)
         out_sr = next(
-            (int(s["sample_rate"]) for s in out_streams if s.get("codec_type") == "audio" and s.get("sample_rate")),
+            (
+                int(s["sample_rate"])
+                for s in out_streams
+                if s.get("codec_type") == "audio" and s.get("sample_rate")
+            ),
             None,
         )
         check(
@@ -83,7 +91,7 @@ def test_custom_lufs(sample: Path):
     out = out_path("custom_lufs.wav")
     cleanup(out)
 
-    result = run(str(sample), str(out), options={"target_lufs": -14})
+    run(str(sample), str(out), options={"target_lufs": -14})
 
     check("output exists", out.exists())
     check("non-empty", out.stat().st_size > 0)
@@ -123,7 +131,7 @@ def test_for_comparison(sample: Path):
     out = out_path("comparison.wav")
     cleanup(out)
 
-    result = run(str(sample), str(out))
+    run(str(sample), str(out))
 
     check("output exists", out.exists())
     # Intentionally not cleaned — kept for manual listening

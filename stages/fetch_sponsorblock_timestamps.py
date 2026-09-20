@@ -79,7 +79,7 @@ import time
 
 import httpx
 
-from shared.output import stage_header, stage_log, stage_timer
+from shared.output import stage_log, stage_timer
 
 _STAGE = "fetch_sponsorblock_timestamps"
 
@@ -127,7 +127,7 @@ def run(video_id: str, *, options: dict | None = None) -> dict:
             total_seconds = sum(seg["end"] - seg["start"] for seg in segments)
             stage_log(_STAGE, f"[dim]{len(segments)} segment(s), {total_seconds:.1f}s to cut[/]")
         else:
-            stage_log(_STAGE, f"[dim]no segments found[/]")
+            stage_log(_STAGE, "[dim]no segments found[/]")
 
     return {
         "video_id": video_id,

@@ -13,8 +13,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from stages.remove_silences import run as remove_silences
 from shared.ffprobe import get_codec_names
+from stages.remove_silences import run as remove_silences
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 

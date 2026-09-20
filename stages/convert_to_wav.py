@@ -140,7 +140,9 @@ def run(input_path: str, output_path: str, *, options: dict | None = None) -> di
             result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
-            raise RuntimeError(f"ffmpeg failed (exit {result.returncode}):\n{result.stderr.strip()}")
+            raise RuntimeError(
+                f"ffmpeg failed (exit {result.returncode}):\n{result.stderr.strip()}"
+            )
 
         tmp.rename(dst)
     except Exception:
@@ -161,7 +163,9 @@ def run(input_path: str, output_path: str, *, options: dict | None = None) -> di
 
 
 def _cli() -> None:
-    parser = argparse.ArgumentParser(description="Convert a media file's primary audio stream to WAV")
+    parser = argparse.ArgumentParser(
+        description="Convert a media file's primary audio stream to WAV"
+    )
     parser.add_argument("--input", required=True, help="Input media file")
     parser.add_argument("--output", required=True, help="Output WAV file")
     parser.add_argument("--options", default=None, help="JSON string of options")

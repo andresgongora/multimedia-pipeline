@@ -119,7 +119,9 @@ def run(
     actual_cut = input_duration - output_duration
 
     if verbose:
-        stage_log(_STAGE, f"[dim]{len(remove_ranges)} segment(s), {actual_cut:.1f}s actually cut[/]")
+        stage_log(
+            _STAGE, f"[dim]{len(remove_ranges)} segment(s), {actual_cut:.1f}s actually cut[/]"
+        )
 
     return {
         "output_path": str(dst),

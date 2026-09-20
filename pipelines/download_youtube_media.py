@@ -48,12 +48,12 @@ import re
 import time
 from pathlib import Path
 
+import stages.download_youtube_media as download_youtube_media
+import stages.fetch_youtube_playlist as fetch_youtube_playlist
 from shared import download_registry as registry
 from shared.config import load_config, propagate_verbose
 from shared.io import sanitize_filename
 from shared.output import pipeline_log
-import stages.download_youtube_media as download_youtube_media
-import stages.fetch_youtube_playlist as fetch_youtube_playlist
 
 _PIPELINE = "download_youtube_media"
 _DEFAULT_CONFIG = Path(__file__).with_suffix(".yaml")
@@ -214,7 +214,9 @@ def _cli() -> None:
     parser.add_argument("playlist_url")
     parser.add_argument("output_dir")
     parser.add_argument("media_type", choices=["video", "audio"])
-    parser.add_argument("--db", default=None, help="Download registry JSON path (optional — omit to skip dedup)")
+    parser.add_argument(
+        "--db", default=None, help="Download registry JSON path (optional — omit to skip dedup)"
+    )
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--config", type=Path, default=None)
     parser.add_argument("--options", type=json.loads, default="{}")

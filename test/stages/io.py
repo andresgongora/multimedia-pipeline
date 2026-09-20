@@ -6,7 +6,6 @@ Usage:
 
 from __future__ import annotations
 
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -14,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from shared.io import IOPair, InputOverwriteError, resolve_io, safe_output_path
+from shared.io import InputOverwriteError, resolve_io, safe_output_path
 
 passed = 0
 failed = 0

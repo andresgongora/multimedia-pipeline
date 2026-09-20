@@ -82,7 +82,11 @@ def test_download_all_new_and_records_db() -> None:
             patch.object(pipeline.download_youtube_media, "run", fake_download),
         ):
             result = pipeline.run(
-                "https://playlist", str(out_dir), "video", db_path=str(db), options={"verbose": False}
+                "https://playlist",
+                str(out_dir),
+                "video",
+                db_path=str(db),
+                options={"verbose": False},
             )
 
         check("2 requested", result["requested"] == 2, str(result))
@@ -121,14 +125,28 @@ def test_second_run_skips_known_urls() -> None:
             patch.object(pipeline.fetch_youtube_playlist, "run", _fake_fetch(_URLS)),
             patch.object(pipeline.download_youtube_media, "run", fake_download),
         ):
-            pipeline.run("https://playlist", str(out_dir), "video", db_path=str(db), options={"verbose": False})
+            pipeline.run(
+                "https://playlist",
+                str(out_dir),
+                "video",
+                db_path=str(db),
+                options={"verbose": False},
+            )
             first_calls = call_count["n"]
             result2 = pipeline.run(
-                "https://playlist", str(out_dir), "video", db_path=str(db), options={"verbose": False}
+                "https://playlist",
+                str(out_dir),
+                "video",
+                db_path=str(db),
+                options={"verbose": False},
             )
 
         check("first run made 2 download calls", first_calls == 2, str(first_calls))
-        check("second run made no new download calls", call_count["n"] == first_calls, str(call_count["n"]))
+        check(
+            "second run made no new download calls",
+            call_count["n"] == first_calls,
+            str(call_count["n"]),
+        )
         check("second run: 0 new", result2["new"] == 0, str(result2))
         check("second run: 2 skipped_known", result2["skipped_known"] == 2, str(result2))
 
@@ -156,12 +174,22 @@ def test_failed_download_not_recorded_and_others_continue() -> None:
             patch.object(pipeline.download_youtube_media, "run", fake_download),
         ):
             result = pipeline.run(
-                "https://playlist", str(out_dir), "video", db_path=str(db), options={"verbose": False}
+                "https://playlist",
+                str(out_dir),
+                "video",
+                db_path=str(db),
+                options={"verbose": False},
             )
 
-        check("1 downloaded, 1 failed", result["downloaded"] == 1 and result["failed"] == 1, str(result))
+        check(
+            "1 downloaded, 1 failed",
+            result["downloaded"] == 1 and result["failed"] == 1,
+            str(result),
+        )
         db_data = json.loads(db.read_text()) if db.exists() else {}
-        check("failed url not recorded", "https://www.youtube.com/watch?v=bbbbbbbbbbb" not in db_data)
+        check(
+            "failed url not recorded", "https://www.youtube.com/watch?v=bbbbbbbbbbb" not in db_data
+        )
         check("succeeded url recorded", "https://www.youtube.com/watch?v=aaaaaaaaaaa" in db_data)
 
 
@@ -196,7 +224,11 @@ def test_existing_file_on_disk_is_skipped_not_overwritten() -> None:
             patch.object(pipeline.download_youtube_media, "run", fake_download),
         ):
             result = pipeline.run(
-                "https://playlist", str(out_dir), "video", db_path=str(db), options={"verbose": False}
+                "https://playlist",
+                str(out_dir),
+                "video",
+                db_path=str(db),
+                options={"verbose": False},
             )
 
         check("download stage not called", called["n"] == 0)
@@ -222,7 +254,9 @@ def test_no_db_path_skips_registry_and_processes_every_url() -> None:
             patch.object(pipeline.download_youtube_media, "run", fake_download),
             patch.object(pipeline.registry, "record") as record,
         ):
-            result = pipeline.run("https://playlist", str(out_dir), "video", options={"verbose": False})
+            result = pipeline.run(
+                "https://playlist", str(out_dir), "video", options={"verbose": False}
+            )
 
         check("2 new", result["new"] == len(_URLS), str(result))
         check("2 downloaded", result["downloaded"] == len(_URLS), str(result))

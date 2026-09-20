@@ -90,7 +90,9 @@ def test_overrides(sample: Path):
     out = out_path(sample, "convert_to_wav_override.wav")
     cleanup(out)
 
-    result = run(str(sample), str(out), options={"sample_rate": 48000, "channels": 1, "verbose": False})
+    result = run(
+        str(sample), str(out), options={"sample_rate": 48000, "channels": 1, "verbose": False}
+    )
     output_sr, output_channels, _ = probe_audio_shape(out)
 
     check("output exists", out.exists())

@@ -22,10 +22,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import stages.extract_and_clean_voice as extract_and_clean_voice
 from shared.config import load_config, propagate_verbose
 from shared.io import safe_output_path
 from shared.output import pipeline_log, pipeline_timer
-import stages.extract_and_clean_voice as extract_and_clean_voice
 
 _PIPELINE = "extract_and_clean_voice"
 _DEFAULT_CONFIG = Path(__file__).with_suffix(".yaml")

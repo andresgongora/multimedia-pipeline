@@ -116,7 +116,9 @@ def _remux_container(src: Path, dst: Path) -> None:
         text=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"ffmpeg remux failed (exit {result.returncode}):\n{result.stderr.strip()}")
+        raise RuntimeError(
+            f"ffmpeg remux failed (exit {result.returncode}):\n{result.stderr.strip()}"
+        )
 
 
 def run(url: str, output_path: str, *, options: dict | None = None) -> dict:
@@ -174,7 +176,9 @@ def run(url: str, output_path: str, *, options: dict | None = None) -> dict:
             try:
                 result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             except subprocess.CalledProcessError as e:
-                raise RuntimeError(f"yt-dlp failed (exit {e.returncode}):\n{e.stderr.strip()}") from e
+                raise RuntimeError(
+                    f"yt-dlp failed (exit {e.returncode}):\n{e.stderr.strip()}"
+                ) from e
             except FileNotFoundError as e:
                 raise RuntimeError("yt-dlp is not installed") from e
 

@@ -42,14 +42,22 @@ def check(name: str, condition: bool, detail: str = "") -> None:
         print(f"  FAIL  {name}  {detail}")
 
 
-def _make_audio(path: Path, *, duration: float = 2.0, sample_rate: int = 48000, channels: int = 2) -> None:
+def _make_audio(
+    path: Path, *, duration: float = 2.0, sample_rate: int = 48000, channels: int = 2
+) -> None:
     cmd = [
-        "ffmpeg", "-y",
-        "-f", "lavfi",
-        "-i", f"sine=frequency=440:sample_rate={sample_rate}:duration={duration}",
-        "-ac", str(channels),
-        "-c:a", "aac",
-        "-b:a", "128k",
+        "ffmpeg",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        f"sine=frequency=440:sample_rate={sample_rate}:duration={duration}",
+        "-ac",
+        str(channels),
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
         str(path),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -59,12 +67,24 @@ def _make_audio(path: Path, *, duration: float = 2.0, sample_rate: int = 48000, 
 
 def _make_video(path: Path, *, duration: float = 1.0, width: int = 64, height: int = 32) -> None:
     cmd = [
-        "ffmpeg", "-y",
-        "-f", "lavfi", "-i", f"testsrc=size={width}x{height}:rate=10",
-        "-f", "lavfi", "-i", "sine=frequency=1000:sample_rate=48000",
-        "-t", str(duration),
-        "-c:v", "libx264", "-pix_fmt", "yuv420p",
-        "-c:a", "aac",
+        "ffmpeg",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        f"testsrc=size={width}x{height}:rate=10",
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=1000:sample_rate=48000",
+        "-t",
+        str(duration),
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "aac",
         str(path),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -76,10 +96,16 @@ def _make_tagged_audio(path: Path) -> None:
     _make_audio(path)
     tagged = path.with_suffix(".tagged.m4a")
     cmd = [
-        "ffmpeg", "-y", "-i", str(path),
-        "-c", "copy",
-        "-metadata", "title=TestTitle",
-        "-metadata", "artist=TestArtist",
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(path),
+        "-c",
+        "copy",
+        "-metadata",
+        "title=TestTitle",
+        "-metadata",
+        "artist=TestArtist",
         str(tagged),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)

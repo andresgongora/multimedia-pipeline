@@ -93,7 +93,9 @@ def test_load_config_runtime_overrides() -> None:
         f.write("verbose: true\nstages:\n  cut:\n    mode: precise\n")
         default = Path(f.name)
     try:
-        cfg = load_config(default, overrides={"verbose": False, "stages": {"cut": {"mode": "fast"}}})
+        cfg = load_config(
+            default, overrides={"verbose": False, "stages": {"cut": {"mode": "fast"}}}
+        )
         check("runtime override verbose", cfg["verbose"] is False)
         check("runtime override stage", cfg["stages"]["cut"]["mode"] == "fast")
     finally:

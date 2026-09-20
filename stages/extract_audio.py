@@ -52,6 +52,7 @@ import logging
 import subprocess
 from pathlib import Path
 
+from shared.ffprobe import get_duration
 from shared.output import stage_header, stage_timer
 
 log = logging.getLogger(__name__)
@@ -77,13 +78,6 @@ _CODEC_MAP: dict[str, list[str]] = {
     "aac": ["-c:a", "aac"],
     "mp3": ["-c:a", "libmp3lame"],
 }
-
-
-# ---------------------------------------------------------------------------
-# Probing
-# ---------------------------------------------------------------------------
-
-from shared.ffprobe import get_duration
 
 
 def _probe_duration(path: Path) -> float | None:
@@ -149,7 +143,9 @@ def run(input_path: str, output_path: str, *, options: dict | None = None) -> di
         result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
-            raise RuntimeError(f"ffmpeg failed (exit {result.returncode}):\n{result.stderr.strip()}")
+            raise RuntimeError(
+                f"ffmpeg failed (exit {result.returncode}):\n{result.stderr.strip()}"
+            )
 
         output_dur = _probe_duration(dst)
         ctx["detail"] = f"{output_dur:.1f}s extracted" if output_dur else "extracted"

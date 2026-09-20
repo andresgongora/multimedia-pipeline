@@ -68,7 +68,9 @@ def run_dir_batch(
             else:
                 processed += 1
                 status = "processed"
-            results.append({"input_path": str(f), "status": status, "output_path": result.get("output_path")})
+            results.append(
+                {"input_path": str(f), "status": status, "output_path": result.get("output_path")}
+            )
             if verbose:
                 icon = "[dim]skip[/]" if status == "skipped" else "[green]\u2713[/]"
                 pipeline_log(pipeline_name, f"{count}{icon} {f.name}")

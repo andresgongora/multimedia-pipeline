@@ -33,16 +33,29 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pipelines.scrub_youtube_media as scrub_youtube_media
 from shared.batch import run_dir_batch
 from shared.config import load_config
-import pipelines.scrub_youtube_media as scrub_youtube_media
 
 _PIPELINE = "batch_scrub_youtube_media"
 _DEFAULT_CONFIG = Path(__file__).with_suffix(".yaml")
 
 _MEDIA_EXTS = [
-    ".mp4", ".mov", ".mkv", ".avi", ".mts", ".m2ts", ".webm",
-    ".m4a", ".mp3", ".opus", ".flac", ".wav", ".ogg", ".aac", ".mka",
+    ".mp4",
+    ".mov",
+    ".mkv",
+    ".avi",
+    ".mts",
+    ".m2ts",
+    ".webm",
+    ".m4a",
+    ".mp3",
+    ".opus",
+    ".flac",
+    ".wav",
+    ".ogg",
+    ".aac",
+    ".mka",
 ]
 
 

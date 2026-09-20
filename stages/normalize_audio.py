@@ -85,9 +85,14 @@ def run(input_path: str, output_path: str, *, options: dict | None = None) -> di
     # an explicit -ar ffmpeg writes the output at 192 kHz, which causes
     # downstream stages to interpret audio at the wrong speed/pitch.
     from shared.ffprobe import get_streams as _get_streams
+
     _streams = _get_streams(src)
     _sr = next(
-        (int(s["sample_rate"]) for s in _streams if s.get("codec_type") == "audio" and s.get("sample_rate")),
+        (
+            int(s["sample_rate"])
+            for s in _streams
+            if s.get("codec_type") == "audio" and s.get("sample_rate")
+        ),
         48000,
     )
 
@@ -107,7 +112,7 @@ def run(input_path: str, output_path: str, *, options: dict | None = None) -> di
 
     log.debug("Normalize command: %s", " ".join(cmd))
 
-    with stage_timer(_STAGE) as ctx:
+    with stage_timer(_STAGE):
         result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode != 0:

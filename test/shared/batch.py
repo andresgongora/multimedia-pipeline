@@ -54,7 +54,9 @@ def test_filters_by_extension_and_delegates() -> None:
 
         calls: list[str] = []
 
-        def fake_run(input_path: str, *, output_dir: str, force: bool, options: dict | None) -> dict:
+        def fake_run(
+            input_path: str, *, output_dir: str, force: bool, options: dict | None
+        ) -> dict:
             calls.append(input_path)
             return {"skipped": False, "output_path": str(Path(output_dir) / Path(input_path).name)}
 
@@ -77,7 +79,9 @@ def test_skip_and_failure_isolated() -> None:
         (in_dir / "skip.mp4").write_text("x")
         (in_dir / "bad.mp4").write_text("x")
 
-        def fake_run(input_path: str, *, output_dir: str, force: bool, options: dict | None) -> dict:
+        def fake_run(
+            input_path: str, *, output_dir: str, force: bool, options: dict | None
+        ) -> dict:
             name = Path(input_path).name
             if name == "skip.mp4":
                 return {"skipped": True, "output_path": str(Path(output_dir) / name)}

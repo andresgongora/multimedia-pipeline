@@ -81,7 +81,7 @@ def test_roundtrip(video: Path):
     cleanup(out)
 
     extract_audio(str(video), str(temp_audio), options={"codec": "lossless"})
-    result = run(str(video), str(temp_audio), str(out))
+    run(str(video), str(temp_audio), str(out))
 
     check("output exists", out.exists())
     check("output larger than audio", out.stat().st_size > temp_audio.stat().st_size)
